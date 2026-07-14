@@ -1,0 +1,132 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum MissionType {
+  WORD
+  PRAISE
+  PRAYER
+}
+
+enum CapStatus {
+  AVAILABLE
+  CLOSED
+}
+
+enum GrantStatus {
+  PENDING
+  CONFIRMED
+}
+
+enum HelpRequestStatus {
+  OPEN
+  RESOLVED
+}
+
+model Team {
+  id     String  @id @default(cuid())
+  name   String  @unique // A/B/C/D
+  groups Group[]
+}
+
+model Region {
+  id          String             @id @default(cuid())
+  name        String             @unique // a/b/c/d
+  locations   Location[]
+  groupOrders GroupRegionOrder[]
+}
+
+model Group {
+  id           String             @id @default(cuid())
+  teamId       String
+  team         Team               @relation(fields: [teamId], references: [id])
+  groupNumber  Int // 1 or 2
+  displayName  String
+  regionOrder  GroupRegionOrder[]
+  submissions  Submission[]
+  helpRequests HelpRequest[]
+
+  @@unique([teamId, groupNumber])
+}
+
+// 그룹별 강제 지역 방문 순서 (8그룹 각자 별도, position 0~3)
+model GroupRegionOrder {
+  id       String @id @default(cuid())
+  groupId  String
+  group    Group  @relation(fields: [groupId], references: [id])
+  regionId String
+  region   Region @relation(fields: [regionId], references: [id])
+  position Int // 0~3
+
+  @@unique([groupId, regionId])
+  @@unique([groupId, position])
+}
+
+model Mission {
+  id        String      @id @default(cuid())
+  type      MissionType
+  content   String // 말씀 본문/기도 주제. 찬양(PRAISE)은 빈 문자열 허용
+  locations Location[]
+}
+
+model Ingredient {
+  id        String     @id @default(cuid())
+  name      String
+  category  String
+  variant   String?
+  isBase    Boolean    @default(false)
+  locations Location[] @relation("LocationIngredients")
+}
+
+model Location {
+  id                String        @id @default(cuid())
+  regionId          String
+  region            Region        @relation(fields: [regionId], references: [id])
+  name              String
+  address           String? // 보조 입력 수단 (사전 계획용). 현장에서는 GPS로 lat/lng 직접 입력이 메인
+  lat               Float
+  lng               Float
+  referencePhotoUrl String?
+  judgePrompt       String        @default("기준 사진과 동일한 장소/사물이 보이는가?")
+  missionId         String?
+  mission           Mission?      @relation(fields: [missionId], references: [id])
+  ingredients       Ingredient[]  @relation("LocationIngredients")
+  capacity          Int           @default(2) // 항상 2로 고정, admin에서 편집 불가
+  claimedCount      Int           @default(0)
+  submissions       Submission[]
+  helpRequests      HelpRequest[]
+}
+
+model Submission {
+  id          String      @id @default(cuid())
+  groupId     String
+  group       Group       @relation(fields: [groupId], references: [id])
+  locationId  String
+  location    Location    @relation(fields: [locationId], references: [id])
+  photoUrl    String?
+  capStatus   CapStatus
+  aiPassed    Boolean?
+  aiReason    String?
+  videoUrl    String?
+  grantStatus GrantStatus @default(PENDING)
+  confirmedAt DateTime?
+  createdAt   DateTime    @default(now())
+}
+
+model HelpRequest {
+  id         String            @id @default(cuid())
+  groupId    String
+  group      Group             @relation(fields: [groupId], references: [id])
+  locationId String
+  location   Location          @relation(fields: [locationId], references: [id])
+  status     HelpRequestStatus @default(OPEN)
+  createdAt  DateTime          @default(now())
+}
