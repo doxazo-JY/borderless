@@ -303,9 +303,9 @@ export function KakaoMap({
       {status === "ready" && needsCompassPermission && (
         <button
           onClick={requestCompassPermission}
-          className="label-tech absolute bottom-3 left-1/2 z-40 -translate-x-1/2 rounded-full border border-line bg-white/90 px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap text-ink shadow"
+          className="label-tech absolute bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-full border-2 border-ink bg-accent px-4 py-2.5 text-[11px] font-bold whitespace-nowrap text-white shadow-[0_4px_14px_-2px_rgba(225,89,28,0.6)]"
         >
-          나침반 방향 표시 켜기
+          🧭 나침반 방향 표시 켜기
         </button>
       )}
     </div>
