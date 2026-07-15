@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 
 export default async function AdminLayout({
   children,
@@ -12,5 +13,34 @@ export default async function AdminLayout({
     notFound();
   }
 
-  return <>{children}</>;
+  const base = `/admin/${secret}`;
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <nav className="flex flex-wrap gap-4 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-sm">
+        <Link href={`${base}/setup`} className="underline underline-offset-2">
+          설정
+        </Link>
+        <Link
+          href={`${base}/help-requests`}
+          className="underline underline-offset-2"
+        >
+          도움 요청
+        </Link>
+        <Link href={`${base}/grants`} className="underline underline-offset-2">
+          지급 확정
+        </Link>
+        <Link
+          href={`${base}/dashboard`}
+          className="underline underline-offset-2"
+        >
+          대시보드
+        </Link>
+        <Link href={`${base}/videos`} className="underline underline-offset-2">
+          제출 영상
+        </Link>
+      </nav>
+      {children}
+    </div>
+  );
 }
