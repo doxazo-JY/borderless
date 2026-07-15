@@ -137,15 +137,28 @@ export function KakaoMap({
                 position.coords.longitude,
               );
 
-              new window.kakao.maps.Circle({
-                center: myLatLng,
-                radius: 15,
-                strokeWeight: 2,
-                strokeColor: "#3B82F6",
-                strokeOpacity: 0.9,
-                fillColor: "#3B82F6",
-                fillOpacity: 0.6,
+              // 실제 축척(반경 15m)으로 그리면 지도 줌 레벨에서 거의 안 보여서,
+              // 마커처럼 고정 픽셀 크기의 오버레이로 표시한다. 미션 포인트 핀(파란색)과
+              // 절대 헷갈리지 않도록 계열 자체가 다른 마젠타色 + 발광 링을 준다.
+              const myLocEl = document.createElement("div");
+              Object.assign(myLocEl.style, {
+                width: "16px",
+                height: "16px",
+                borderRadius: "50%",
+                background: "#e619a3",
+                border: "3px solid white",
+                boxShadow:
+                  "0 0 0 4px rgba(230,25,163,0.35), 0 1px 4px rgba(0,0,0,0.4)",
+                pointerEvents: "none",
+              });
+
+              new window.kakao.maps.CustomOverlay({
+                position: myLatLng,
+                content: myLocEl,
                 map,
+                xAnchor: 0.5,
+                yAnchor: 0.5,
+                zIndex: 5,
               });
 
               bounds.extend(myLatLng);
