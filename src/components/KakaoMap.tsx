@@ -21,6 +21,19 @@ declare global {
 const SCRIPT_ID = "kakao-maps-sdk";
 const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getHeadingFromEvent(event: any): number | null {
+  if (typeof event.webkitCompassHeading === "number") {
+    // iOS Safari — 이미 정북 기준 시계방향 각도
+    return event.webkitCompassHeading;
+  }
+  if (typeof event.alpha === "number") {
+    // Android(deviceorientationabsolute) — alpha는 정북 기준 반시계 방향이라 뒤집어준다
+    return (360 - event.alpha) % 360;
+  }
+  return null;
+}
+
 export function KakaoMap({
   locations,
   onSelectLocation,
@@ -33,12 +46,49 @@ export function KakaoMap({
     KAKAO_APP_KEY ? "loading" : "error",
   );
   const [locationDenied, setLocationDenied] = useState(false);
+  const [needsCompassPermission, setNeedsCompassPermission] = useState(false);
   const onSelectLocationRef = useRef(onSelectLocation);
   useEffect(() => {
     onSelectLocationRef.current = onSelectLocation;
   }, [onSelectLocation]);
   // 개발 모드 StrictMode가 effect를 두 번 실행해도 지도가 중복 생성되지 않도록 가드
   const mapCreatedRef = useRef(false);
+  // 내 위치 마커의 방향(나침반) 부채꼴 — DOM을 직접 회전시켜야 해서 ref로 들고 있는다
+  const compassConeRef = useRef<HTMLDivElement | null>(null);
+  const compassAttachedRef = useRef(false);
+
+  function attachCompass() {
+    if (compassAttachedRef.current) return;
+    compassAttachedRef.current = true;
+
+    function handleOrientation(event: Event) {
+      const heading = getHeadingFromEvent(event);
+      if (heading !== null && compassConeRef.current) {
+        compassConeRef.current.style.transform = `rotate(${heading}deg)`;
+      }
+    }
+
+    const eventName =
+      "ondeviceorientationabsolute" in window
+        ? "deviceorientationabsolute"
+        : "deviceorientation";
+    window.addEventListener(eventName, handleOrientation);
+  }
+
+  function requestCompassPermission() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const DOE = (window as any).DeviceOrientationEvent;
+    if (DOE && typeof DOE.requestPermission === "function") {
+      DOE.requestPermission()
+        .then((state: string) => {
+          if (state === "granted") {
+            attachCompass();
+            setNeedsCompassPermission(false);
+          }
+        })
+        .catch(() => {});
+    }
+  }
 
   useEffect(() => {
     if (!KAKAO_APP_KEY) {
@@ -140,21 +190,47 @@ export function KakaoMap({
               // 실제 축척(반경 15m)으로 그리면 지도 줌 레벨에서 거의 안 보여서,
               // 마커처럼 고정 픽셀 크기의 오버레이로 표시한다. 미션 포인트 핀(파란색)과
               // 절대 헷갈리지 않도록 계열 자체가 다른 마젠타色 + 발광 링을 준다.
-              const myLocEl = document.createElement("div");
-              Object.assign(myLocEl.style, {
-                width: "16px",
-                height: "16px",
-                borderRadius: "50%",
-                background: "#e619a3",
-                border: "3px solid white",
-                boxShadow:
-                  "0 0 0 4px rgba(230,25,163,0.35), 0 1px 4px rgba(0,0,0,0.4)",
+              const wrapperEl = document.createElement("div");
+              Object.assign(wrapperEl.style, {
+                position: "relative",
+                width: "46px",
+                height: "46px",
                 pointerEvents: "none",
               });
 
+              // 폰이 바라보는 방향(나침반) 부채꼴 — 방향 정보가 들어오기 전엔 안 보이게 시작
+              const coneEl = document.createElement("div");
+              Object.assign(coneEl.style, {
+                position: "absolute",
+                inset: "0",
+                borderRadius: "50%",
+                background:
+                  "conic-gradient(from -30deg, rgba(230,25,163,0.4) 0deg, rgba(230,25,163,0.4) 60deg, transparent 60deg 360deg)",
+                transition: "transform 0.15s linear",
+              });
+              compassConeRef.current = coneEl;
+
+              const dotEl = document.createElement("div");
+              Object.assign(dotEl.style, {
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                width: "16px",
+                height: "16px",
+                marginLeft: "-8px",
+                marginTop: "-8px",
+                borderRadius: "50%",
+                background: "#e619a3",
+                border: "3px solid white",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+              });
+
+              wrapperEl.appendChild(coneEl);
+              wrapperEl.appendChild(dotEl);
+
               new window.kakao.maps.CustomOverlay({
                 position: myLatLng,
-                content: myLocEl,
+                content: wrapperEl,
                 map,
                 xAnchor: 0.5,
                 yAnchor: 0.5,
@@ -163,6 +239,16 @@ export function KakaoMap({
 
               bounds.extend(myLatLng);
               map.setBounds(bounds);
+
+              // 나침반 방향: iOS 13+ Safari는 사용자 탭 없이는 권한 요청 자체가 안 되므로
+              // 버튼을 띄우고, 그 외 브라우저는 권한 프롬프트가 없어 바로 붙인다.
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const DOE = (window as any).DeviceOrientationEvent;
+              if (DOE && typeof DOE.requestPermission === "function") {
+                setNeedsCompassPermission(true);
+              } else if (typeof DOE !== "undefined") {
+                attachCompass();
+              }
             },
             (error) => {
               console.warn("위치 권한 거부 또는 오류:", error);
@@ -211,6 +297,14 @@ export function KakaoMap({
         <div className="label-tech absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border-2 border-ink bg-paper px-3 py-1.5 text-[10px] text-ink shadow">
           위치 권한이 없어 내 위치는 표시되지 않아요
         </div>
+      )}
+      {status === "ready" && needsCompassPermission && (
+        <button
+          onClick={requestCompassPermission}
+          className="label-tech absolute bottom-3 left-1/2 z-40 -translate-x-1/2 rounded-full border border-line bg-white/90 px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap text-ink shadow"
+        >
+          나침반 방향 표시 켜기
+        </button>
       )}
     </div>
   );
