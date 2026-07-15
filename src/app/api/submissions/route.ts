@@ -41,7 +41,23 @@ export async function POST(request: Request) {
     });
   }
 
-  // 2. 캡 확인 (AI 호출 전에 먼저) — 마감이면 사진 업로드/판정 자체를 생략
+  // 2. 지역당 통과는 한 곳만 — 이 지역의 다른 포인트에서 이미 통과했다면 재판정 없이 안내
+  const passedInRegion = await prisma.submission.findFirst({
+    where: {
+      groupId: group.id,
+      aiPassed: true,
+      location: { regionId: location.regionId },
+    },
+    include: { location: true },
+  });
+  if (passedInRegion && passedInRegion.locationId !== location.id) {
+    return NextResponse.json({
+      result: "region_done",
+      message: `이미 ${location.region.name}지역 "${passedInRegion.location.name}"에서 통과했어요. 그 포인트로 돌아가 미션을 확인해주세요.`,
+    });
+  }
+
+  // 3. 캡 확인 (AI 호출 전에 먼저) — 마감이면 사진 업로드/판정 자체를 생략
   if (location.claimedCount >= location.capacity) {
     await prisma.submission.create({
       data: {
@@ -57,7 +73,7 @@ export async function POST(request: Request) {
     });
   }
 
-  // 3. AI 판정
+  // 4. AI 판정
   const photoUrl = await uploadPhoto(photo, `submissions/${group.id}`);
   const judgement = await judgePhotoMatch({
     referencePhotoUrl: location.referencePhotoUrl,
@@ -78,11 +94,11 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({
       result: "failed",
-      message: judgement.reason || "사진이 기준과 일치하지 않아요. 다시 촬영해보세요.",
+      message: judgement.reason || "사진이 기준과 일치하지 않아요. 다른 사진으로 다시 시도해보세요.",
     });
   }
 
-  // 4. 통과 시 캡 원자적 차감 (조건부 UPDATE)
+  // 5. 통과 시 캡 원자적 차감 (조건부 UPDATE)
   const updateResult = await prisma.location.updateMany({
     where: { id: location.id, claimedCount: { lt: location.capacity } },
     data: { claimedCount: { increment: 1 } },
@@ -122,6 +138,7 @@ export async function POST(request: Request) {
     result: "passed",
     message: judgement.reason,
     submissionId: submission.id,
+    photoUrl,
     mission: location.mission
       ? { type: location.mission.type, content: location.mission.content }
       : null,

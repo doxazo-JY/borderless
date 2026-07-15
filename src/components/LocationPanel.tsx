@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { MapLocationInfo } from "@/components/MapScreen";
+import { useRouter } from "next/navigation";
+import type { MapLocationInfo, PanelStep } from "@/components/MapScreen";
 import { supabaseBrowser } from "@/lib/supabase-client";
 
 const MISSION_LABEL: Record<string, string> = {
@@ -10,61 +11,61 @@ const MISSION_LABEL: Record<string, string> = {
   PRAYER: "기도",
 };
 
-type SubmitResult = {
+export type SubmitResult = {
   result: "wrong_region" | "closed" | "failed" | "passed" | string;
   message?: string;
   submissionId?: string;
   mission?: { type: string; content: string } | null;
+  photoUrl?: string | null;
+  videoUrl?: string | null;
 };
 
-function StampReveal({ code }: { code: string }) {
+function passCode(location: MapLocationInfo) {
+  return `${location.regionName.toUpperCase()}-${location.id.slice(-4).toUpperCase()}`;
+}
+
+function PassCard({
+  location,
+  mission,
+  showPulse,
+  onPulseEnd,
+}: {
+  location: MapLocationInfo;
+  mission?: { type: string; content: string } | null;
+  showPulse: boolean;
+  onPulseEnd: () => void;
+}) {
   return (
-    <svg viewBox="0 0 160 160" width="128" height="128" className="mx-auto">
-      <defs>
-        <path id="stampcircle" d="M 80 20 A 60 60 0 1 1 79.9 20" />
-      </defs>
-      <circle
-        cx="80"
-        cy="80"
-        r="60"
-        fill="none"
-        stroke="var(--color-accent)"
-        strokeWidth="3"
-      />
-      <circle
-        cx="80"
-        cy="80"
-        r="47"
-        fill="none"
-        stroke="var(--color-accent)"
-        strokeWidth="1"
-      />
-      <text fontSize="10" letterSpacing="3" fill="var(--color-accent)">
-        <textPath href="#stampcircle" startOffset="2">
-          FIELD CONTROL • FIELD CONTROL •
-        </textPath>
-      </text>
-      <text
-        x="80"
-        y="86"
-        textAnchor="middle"
-        fontSize="22"
-        fontWeight="800"
-        fill="var(--color-ink)"
-      >
-        PASS
-      </text>
-      <text
-        x="80"
-        y="104"
-        textAnchor="middle"
-        fontSize="9"
-        letterSpacing="2"
-        fill="var(--color-muted)"
-      >
-        {code}
-      </text>
-    </svg>
+    <div className="relative">
+      {showPulse && (
+        <div
+          onAnimationEnd={onPulseEnd}
+          className="animate-pass-pulse pointer-events-none absolute -inset-6 rounded-2xl"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(225,89,28,0.4), transparent 70%)",
+          }}
+        />
+      )}
+      <div className="relative overflow-hidden rounded-lg border border-line bg-paper-panel shadow-[0_10px_26px_-14px_rgba(20,18,12,0.35)]">
+        <div className="flex items-center justify-between border-b border-dashed border-line px-3 py-2">
+          <span className="text-sm font-extrabold tracking-wide text-ink">
+            PASS
+          </span>
+          <span className="label-tech text-[10px] text-muted">
+            {passCode(location)}
+          </span>
+        </div>
+        <div className="p-3">
+          <p className="label-tech text-[10px] text-accent">
+            {MISSION_LABEL[mission?.type ?? ""] ?? mission?.type} 미션
+          </p>
+          <p className="mt-1 text-base leading-snug font-bold text-ink">
+            {mission?.content || "자유곡으로 찬양해주세요."}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -72,25 +73,34 @@ export function LocationPanel({
   location,
   isCurrentRegion,
   targetRegionName,
+  targetRegionAwaitingVideo,
   onClose,
+  result,
+  onResult,
+  step,
+  onStepChange,
 }: {
   location: MapLocationInfo;
   isCurrentRegion: boolean;
   targetRegionName: string | null;
+  targetRegionAwaitingVideo: boolean;
   onClose: () => void;
+  result: SubmitResult | undefined;
+  onResult: (result: SubmitResult | null) => void;
+  step: PanelStep;
+  onStepChange: (step: PanelStep) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<SubmitResult | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploading, setVideoUploading] = useState(false);
-  const [videoUploaded, setVideoUploaded] = useState(false);
+  const [pulseShown, setPulseShown] = useState(false);
+  const router = useRouter();
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] ?? null;
     setFile(selected);
-    setResult(null);
     setPreviewUrl(selected ? URL.createObjectURL(selected) : null);
   }
 
@@ -108,9 +118,12 @@ export function LocationPanel({
       });
       if (!res.ok) throw new Error("요청 실패");
       const data: SubmitResult = await res.json();
-      setResult(data);
+      onResult(data);
+      // 지역 진행 상태(다음 목적지, 같은 지역 다른 포인트 안내)는 서버에서 계산되므로
+      // 새 판정 결과를 반영하도록 서버 컴포넌트 데이터를 다시 불러온다.
+      router.refresh();
     } catch {
-      setResult({
+      onResult({
         result: "failed",
         message:
           "업로드 중 문제가 생겼어요 (네트워크 상태를 확인하고) 다시 시도해주세요.",
@@ -123,7 +136,7 @@ export function LocationPanel({
   function resetForRetry() {
     setFile(null);
     setPreviewUrl(null);
-    setResult(null);
+    onResult(null);
   }
 
   async function handleVideoUpload() {
@@ -161,7 +174,10 @@ export function LocationPanel({
       );
       const completeData = await completeRes.json();
       if (completeData.ok) {
-        setVideoUploaded(true);
+        onResult({ ...result, videoUrl: completeData.videoUrl });
+        // 영상 업로드가 끝나야 지역이 "완료"로 잡혀 다음 목적지로 넘어가므로,
+        // 서버에서 계산되는 진행 상태를 다시 불러온다.
+        router.refresh();
       }
     } catch (e) {
       console.error("영상 업로드 실패:", e);
@@ -170,13 +186,14 @@ export function LocationPanel({
     }
   }
 
-  // 사진 업로드 UI/미션 공개처럼 내용이 있는 상태만 패널을 넉넉하게 채움.
+  const passed = result?.result === "passed";
+  // 통과 화면처럼 내용이 있는 상태만 패널을 넉넉하게 채움.
   // "차례 아님"/"마감"처럼 짧은 안내 문구만 있을 때는 내용만큼만 차지.
-  const isRoomy = isCurrentRegion && !location.isClosed;
+  const isRoomy = passed || (isCurrentRegion && !location.isClosed);
 
   return (
     <div
-      className={`absolute inset-x-0 bottom-0 z-50 flex max-h-[55%] flex-col overflow-y-auto rounded-t-2xl border-t-4 border-ink bg-paper p-4 text-ink shadow-[0_-4px_16px_rgba(0,0,0,0.2)] ${isRoomy ? "min-h-[45%]" : ""}`}
+      className={`relative z-10 flex max-h-[60%] flex-col overflow-y-auto border-t border-line bg-paper-panel px-4 pt-4 pb-16 text-ink ${isRoomy ? "min-h-[45%]" : ""}`}
     >
       <div className="mb-3 flex items-start justify-between">
         <div>
@@ -193,62 +210,128 @@ export function LocationPanel({
         </button>
       </div>
 
-      {!isCurrentRegion ? (
+      {!passed && location.regionCompletedElsewhere ? (
         <p className="text-sm text-ink">
-          아직 이 지역으로 갈 차례가 아니에요.
-          {targetRegionName && ` 다음 목적지는 ${targetRegionName}지역입니다.`}
+          이미 {location.regionName}지역 &ldquo;{location.regionCompletedElsewhere.locationName}
+          &rdquo;에서 통과했어요.{" "}
+          {location.regionCompletedElsewhere.videoUploaded
+            ? "미션은 그 포인트에서 확인하세요."
+            : "그 포인트로 돌아가 미션 영상 업로드까지 마쳐주세요."}
+        </p>
+      ) : passed ? (
+        <div className="space-y-3">
+          <div className="flex gap-1 rounded-md border border-line p-1">
+            <button
+              onClick={() => onStepChange("pass")}
+              className={`label-tech flex-1 rounded px-2 py-1.5 text-[10px] transition-colors ${
+                step === "pass" ? "bg-ink text-paper" : "text-muted"
+              }`}
+            >
+              통과 정보
+            </button>
+            <button
+              onClick={() => onStepChange("video")}
+              className={`label-tech flex-1 rounded px-2 py-1.5 text-[10px] transition-colors ${
+                step === "video" ? "bg-ink text-paper" : "text-muted"
+              }`}
+            >
+              영상 업로드
+            </button>
+          </div>
+
+          {step === "pass" ? (
+            <div className="space-y-3">
+              <PassCard
+                location={location}
+                mission={result.mission}
+                showPulse={!pulseShown}
+                onPulseEnd={() => setPulseShown(true)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="label-tech mb-1 text-[10px] text-muted">
+                    기준 사진
+                  </p>
+                  {location.referencePhotoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={location.referencePhotoUrl}
+                      alt="기준 사진"
+                      className="h-28 w-full rounded-md border border-line object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                      미등록
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="label-tech mb-1 text-[10px] text-muted">
+                    내가 제출한 사진
+                  </p>
+                  {result.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={result.photoUrl}
+                      alt="내가 제출한 사진"
+                      className="h-28 w-full rounded-md border border-line object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                      기록 없음
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="label-tech text-[10px] text-muted">
+                미션 수행 영상 (10~20초)
+              </p>
+              {result.videoUrl ? (
+                <video
+                  controls
+                  src={result.videoUrl}
+                  className="w-full rounded-md border border-line"
+                />
+              ) : (
+                <div className="flex gap-2">
+                  <label className="flex-1 cursor-pointer rounded-md border border-line px-3 py-2 text-center text-sm font-medium">
+                    {videoFile ? videoFile.name : "영상 선택"}
+                    <input
+                      type="file"
+                      accept="video/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) =>
+                        setVideoFile(e.target.files?.[0] ?? null)
+                      }
+                    />
+                  </label>
+                  <button
+                    onClick={handleVideoUpload}
+                    disabled={!videoFile || videoUploading}
+                    className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-bold text-white shadow-[0_4px_12px_-4px_rgba(225,89,28,0.5)] disabled:opacity-40"
+                  >
+                    {videoUploading ? "업로드 중..." : "영상 업로드"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : !isCurrentRegion ? (
+        <p className="text-sm text-ink">
+          {targetRegionName &&
+            (targetRegionAwaitingVideo
+              ? `${targetRegionName}지역에서 아직 미션 영상 업로드가 안 끝났어요. 그것부터 마쳐주세요.`
+              : `아직 이 지역으로 갈 차례가 아니에요. 다음 목적지는 ${targetRegionName}지역입니다.`)}
         </p>
       ) : location.isClosed ? (
         <p className="text-sm text-ink">
           이미 마감된 포인트예요. 같은 지역의 다른 포인트로 가보세요.
         </p>
-      ) : result?.result === "passed" ? (
-        <div className="space-y-3">
-          <StampReveal code={location.regionName.toUpperCase()} />
-          {result.mission && (
-            <div className="rounded-lg border-2 border-line bg-paper-panel p-3 text-center">
-              <p className="label-tech text-[10px] text-accent">
-                {MISSION_LABEL[result.mission.type] ?? result.mission.type} 미션
-              </p>
-              <p className="mt-2 text-lg leading-snug font-bold text-ink">
-                {result.mission.content || "자유곡으로 찬양해주세요."}
-              </p>
-            </div>
-          )}
-
-          <div className="border-t border-line pt-3">
-            <p className="label-tech mb-1 text-[10px] text-muted">
-              미션 수행 영상 (10~20초)
-            </p>
-            {videoUploaded ? (
-              <p className="text-sm font-semibold text-accent">
-                영상 업로드 완료!
-              </p>
-            ) : (
-              <div className="flex gap-2">
-                <label className="flex-1 cursor-pointer rounded-lg border-2 border-line px-3 py-2 text-center text-sm font-medium">
-                  {videoFile ? videoFile.name : "영상 촬영"}
-                  <input
-                    type="file"
-                    accept="video/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) =>
-                      setVideoFile(e.target.files?.[0] ?? null)
-                    }
-                  />
-                </label>
-                <button
-                  onClick={handleVideoUpload}
-                  disabled={!videoFile || videoUploading}
-                  className="flex-1 rounded-lg bg-ink px-3 py-2 text-sm font-bold text-paper disabled:opacity-40"
-                >
-                  {videoUploading ? "업로드 중..." : "영상 업로드"}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
       ) : result?.result === "closed" ? (
         <p className="text-sm text-ink">{result.message}</p>
       ) : result?.result === "wrong_region" ? (
@@ -256,7 +339,7 @@ export function LocationPanel({
       ) : (
         <div className="space-y-3">
           {result?.result === "failed" && (
-            <p className="rounded-lg border-2 border-accent bg-paper-panel p-2 text-sm font-medium text-accent">
+            <p className="rounded-md border border-accent bg-paper-panel p-2 text-sm font-medium text-accent">
               {result.message}
             </p>
           )}
@@ -270,10 +353,10 @@ export function LocationPanel({
               <img
                 src={location.referencePhotoUrl}
                 alt="기준 사진"
-                className="h-32 w-full rounded-lg border border-line object-cover"
+                className="h-32 w-full rounded-md border border-line object-cover"
               />
             ) : (
-              <div className="flex h-32 w-full items-center justify-center rounded-lg border border-dashed border-line bg-paper-panel text-xs text-muted">
+              <div className="flex h-32 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                 기준 사진 미등록 (더미 데이터)
               </div>
             )}
@@ -288,14 +371,14 @@ export function LocationPanel({
               <img
                 src={previewUrl}
                 alt="업로드할 사진"
-                className="h-32 w-full rounded-lg border border-line object-cover"
+                className="h-32 w-full rounded-md border border-line object-cover"
               />
             </div>
           )}
 
           <div className="flex gap-2">
-            <label className="flex-1 cursor-pointer rounded-lg border-2 border-line bg-paper px-3 py-2 text-center text-sm font-medium">
-              {file ? "사진 다시 찍기" : "사진 찍기"}
+            <label className="flex-1 cursor-pointer rounded-md border border-line bg-paper-panel px-3 py-2 text-center text-sm font-medium">
+              {file ? "사진 다시 선택" : "사진 선택"}
               <input
                 type="file"
                 accept="image/*"
@@ -307,7 +390,7 @@ export function LocationPanel({
             <button
               onClick={handleSubmit}
               disabled={!file || submitting}
-              className="flex-1 rounded-lg bg-accent px-3 py-2 text-sm font-bold text-paper disabled:opacity-40"
+              className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-bold text-white shadow-[0_4px_12px_-4px_rgba(225,89,28,0.5)] disabled:opacity-40"
             >
               {submitting ? "판정 중..." : "제출하기"}
             </button>

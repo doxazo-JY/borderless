@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { KakaoMap } from "@/components/KakaoMap";
-import { LocationPanel } from "@/components/LocationPanel";
+import { LocationPanel, type SubmitResult } from "@/components/LocationPanel";
 import { clearGroup } from "@/app/actions";
 import { teamColor } from "@/lib/team-colors";
+import type { RegionProgressItem } from "@/lib/region-progress";
 
 export type MapLocationInfo = {
   id: string;
@@ -16,74 +17,196 @@ export type MapLocationInfo = {
   lng: number;
   referencePhotoUrl: string | null;
   isClosed: boolean;
+  passedInfo: {
+    submissionId: string;
+    mission: { type: string; content: string } | null;
+    photoUrl: string | null;
+    videoUrl: string | null;
+  } | null;
+  regionCompletedElsewhere: {
+    locationName: string;
+    videoUploaded: boolean;
+  } | null;
 };
+
+export type PanelStep = "pass" | "video";
+
+function regionInitialResult(
+  location: MapLocationInfo,
+): SubmitResult | undefined {
+  if (!location.passedInfo) return undefined;
+  return {
+    result: "passed",
+    submissionId: location.passedInfo.submissionId,
+    mission: location.passedInfo.mission,
+    photoUrl: location.passedInfo.photoUrl,
+    videoUrl: location.passedInfo.videoUrl,
+  };
+}
 
 export function MapScreen({
   group,
   locations,
+  regionProgress,
   targetRegionId,
   targetRegionName,
 }: {
   group: { id: string; displayName: string; teamName: string };
   locations: MapLocationInfo[];
+  regionProgress: RegionProgressItem[];
   targetRegionId: string | null;
   targetRegionName: string | null;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // 그룹이 위치 패널을 닫고 지도만 보다가 다시 열어도(마커 재클릭) 통과 상태/영상 업로드
+  // 여부가 사라지지 않도록, 결과와 현재 탭을 MapScreen 레벨에서 위치별로 들고 있는다.
+  const [results, setResults] = useState<Record<string, SubmitResult>>(() => {
+    const initial: Record<string, SubmitResult> = {};
+    for (const loc of locations) {
+      const r = regionInitialResult(loc);
+      if (r) initial[loc.id] = r;
+    }
+    return initial;
+  });
+  const [steps, setSteps] = useState<Record<string, PanelStep>>({});
+
   const selectedLocation = locations.find((l) => l.id === selectedId) ?? null;
+  const currentIndex = regionProgress.findIndex((p) => p.status === "current");
+  const stepperPct =
+    regionProgress.length > 0
+      ? ((currentIndex >= 0 ? currentIndex : regionProgress.length - 1) + 0.5) /
+        regionProgress.length
+      : 0.5;
+  // 이미 이 지역에서 AI 판정은 통과하고 영상 업로드만 남은 상태면 "다음 목적지"라는
+  // 말이 어색하므로("이미 여기 있는데 다음 목적지가 여기?"), 문구를 다르게 보여준다.
+  const targetRegionAwaitingVideo = locations.some(
+    (l) => l.regionId === targetRegionId && l.passedInfo && !l.passedInfo.videoUrl,
+  );
 
   return (
     <main className="flex flex-1 flex-col bg-paper text-ink">
-      <div
-        className="flex items-center justify-between border-b-4 px-4 py-3"
-        style={{ borderColor: teamColor(group.teamName) }}
-      >
-        <div>
-          <p className="label-tech text-[10px] text-muted">선택된 그룹</p>
-          <h1
-            className="text-lg font-extrabold"
-            style={{ color: teamColor(group.teamName) }}
-          >
-            {group.displayName}
-          </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/inventory"
-            className="label-tech text-[10px] text-ink underline underline-offset-2"
-          >
-            인벤토리
-          </Link>
-          <form action={clearGroup}>
-            <button
-              type="submit"
-              className="label-tech text-[10px] text-muted underline underline-offset-2"
+      <div className="relative border-b border-line px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="label-tech text-[10px] text-muted">선택된 그룹</p>
+            <h1
+              className="text-lg font-bold"
+              style={{ color: teamColor(group.teamName) }}
             >
-              다시 선택
-            </button>
-          </form>
+              {group.displayName}
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/inventory"
+              className="label-tech text-[10px] text-ink underline underline-offset-2"
+            >
+              인벤토리
+            </Link>
+            <form action={clearGroup}>
+              <button
+                type="submit"
+                className="label-tech text-[10px] text-muted underline underline-offset-2"
+              >
+                다시 선택
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
 
-      <div className="relative min-h-0 flex-1">
-        <KakaoMap
-          locations={locations}
-          onSelectLocation={(id) => setSelectedId(id)}
-        />
-
-        {targetRegionName && (
-          <div className="label-tech absolute top-3 left-1/2 z-50 -translate-x-1/2 rounded-full border-2 border-ink bg-paper px-3 py-1.5 text-[10px] whitespace-nowrap text-ink shadow-md">
-            다음 목적지: {targetRegionName}지역
+        {regionProgress.length > 0 && (
+          <div className="mt-2">
+            <div className="flex gap-[3px]">
+              {regionProgress.map((p) => (
+                <span
+                  key={p.regionId}
+                  className={`h-[3px] flex-1 rounded-full ${
+                    p.status === "done"
+                      ? "bg-muted"
+                      : p.status === "current"
+                        ? "bg-accent"
+                        : "bg-line"
+                  }`}
+                />
+              ))}
+            </div>
+            <div className="mt-1 flex gap-[3px]">
+              {regionProgress.map((p) => (
+                <span
+                  key={p.regionId}
+                  className={`label-tech flex-1 text-center text-[9px] ${
+                    p.status === "current"
+                      ? "font-bold text-accent"
+                      : "text-muted"
+                  }`}
+                >
+                  {p.regionName}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
-        {selectedLocation && (
-          <LocationPanel
-            location={selectedLocation}
-            isCurrentRegion={selectedLocation.regionId === targetRegionId}
-            targetRegionName={targetRegionName}
-            onClose={() => setSelectedId(null)}
-          />
+        {/* 현재 위치 점 — 아래 지도 프레임의 목적지 배지로 연결선이 이어짐 */}
+        <span
+          className="absolute bottom-[-4px] h-[7px] w-[7px] -translate-x-1/2 translate-y-1/2 rounded-full bg-accent"
+          style={{
+            left: `${stepperPct * 100}%`,
+            boxShadow: "0 0 0 3px var(--color-paper)",
+          }}
+        />
+      </div>
+
+      <div className="relative min-h-0 flex-1 p-2">
+        <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-panel shadow-[0_2px_6px_rgba(20,18,12,0.05)]">
+          <div className="relative min-h-0 flex-1">
+            <KakaoMap
+              locations={locations}
+              onSelectLocation={(id) => setSelectedId(id)}
+            />
+          </div>
+
+          {selectedLocation && (
+            <LocationPanel
+              location={selectedLocation}
+              isCurrentRegion={selectedLocation.regionId === targetRegionId}
+              targetRegionName={targetRegionName}
+              targetRegionAwaitingVideo={targetRegionAwaitingVideo}
+              onClose={() => setSelectedId(null)}
+              result={results[selectedLocation.id]}
+              onResult={(r) =>
+                setResults((prev) => {
+                  if (r === null) {
+                    const next = { ...prev };
+                    delete next[selectedLocation.id];
+                    return next;
+                  }
+                  return { ...prev, [selectedLocation.id]: r };
+                })
+              }
+              step={steps[selectedLocation.id] ?? "pass"}
+              onStepChange={(step) =>
+                setSteps((prev) => ({ ...prev, [selectedLocation.id]: step }))
+              }
+            />
+          )}
+        </div>
+
+        {/* 연결선: 헤더의 현재 위치 점에서 아래로 이어져 목적지 배지에 닿는다 */}
+        <span
+          className="pointer-events-none absolute top-0 h-[14px] w-[1.5px] -translate-x-1/2 bg-accent"
+          style={{ left: `${stepperPct * 100}%` }}
+        />
+
+        {targetRegionName && (
+          <div
+            className="label-tech absolute top-2 z-40 -translate-x-1/2 rounded-md border border-line bg-white/90 px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap text-ink shadow-[0_3px_10px_rgba(20,18,12,0.12)]"
+            style={{ left: `${stepperPct * 100}%` }}
+          >
+            {targetRegionAwaitingVideo
+              ? `${targetRegionName}지역 · 영상 업로드 남음`
+              : `다음 목적지 · ${targetRegionName}지역`}
+          </div>
         )}
       </div>
     </main>
