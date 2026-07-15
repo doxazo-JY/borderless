@@ -39,7 +39,11 @@ export default async function MapPage() {
 
   return (
     <MapScreen
-      group={{ id: group.id, displayName: group.displayName }}
+      group={{
+        id: group.id,
+        displayName: group.displayName,
+        teamName: group.team.name,
+      }}
       locations={mapLocations}
       targetRegionId={targetRegionId}
       targetRegionName={targetRegionName}

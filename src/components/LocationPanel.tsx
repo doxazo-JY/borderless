@@ -9,18 +9,63 @@ const MISSION_LABEL: Record<string, string> = {
   PRAYER: "기도",
 };
 
-const MISSION_STYLE: Record<string, { bg: string; border: string; text: string }> = {
-  WORD: { bg: "bg-blue-50", border: "border-blue-300", text: "text-blue-700" },
-  PRAISE: { bg: "bg-purple-50", border: "border-purple-300", text: "text-purple-700" },
-  PRAYER: { bg: "bg-amber-50", border: "border-amber-300", text: "text-amber-700" },
-};
-
 type SubmitResult = {
   result: "wrong_region" | "closed" | "failed" | "passed" | string;
   message?: string;
   submissionId?: string;
   mission?: { type: string; content: string } | null;
 };
+
+function StampReveal({ code }: { code: string }) {
+  return (
+    <svg viewBox="0 0 160 160" width="128" height="128" className="mx-auto">
+      <defs>
+        <path id="stampcircle" d="M 80 20 A 60 60 0 1 1 79.9 20" />
+      </defs>
+      <circle
+        cx="80"
+        cy="80"
+        r="60"
+        fill="none"
+        stroke="var(--color-accent)"
+        strokeWidth="3"
+      />
+      <circle
+        cx="80"
+        cy="80"
+        r="47"
+        fill="none"
+        stroke="var(--color-accent)"
+        strokeWidth="1"
+      />
+      <text fontSize="10" letterSpacing="3" fill="var(--color-accent)">
+        <textPath href="#stampcircle" startOffset="2">
+          FIELD CONTROL • FIELD CONTROL •
+        </textPath>
+      </text>
+      <text
+        x="80"
+        y="86"
+        textAnchor="middle"
+        fontSize="22"
+        fontWeight="800"
+        fill="var(--color-ink)"
+      >
+        PASS
+      </text>
+      <text
+        x="80"
+        y="104"
+        textAnchor="middle"
+        fontSize="9"
+        letterSpacing="2"
+        fill="var(--color-muted)"
+      >
+        {code}
+      </text>
+    </svg>
+  );
+}
 
 export function LocationPanel({
   location,
@@ -60,10 +105,15 @@ export function LocationPanel({
         method: "POST",
         body: formData,
       });
+      if (!res.ok) throw new Error("요청 실패");
       const data: SubmitResult = await res.json();
       setResult(data);
     } catch {
-      setResult({ result: "failed", message: "업로드 중 오류가 발생했어요. 다시 시도해주세요." });
+      setResult({
+        result: "failed",
+        message:
+          "업로드 중 문제가 생겼어요 (네트워크 상태를 확인하고) 다시 시도해주세요.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -81,10 +131,10 @@ export function LocationPanel({
     try {
       const formData = new FormData();
       formData.append("video", videoFile);
-      const res = await fetch(`/api/submissions/${result.submissionId}/video`, {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(
+        `/api/submissions/${result.submissionId}/video`,
+        { method: "POST", body: formData },
+      );
       const data = await res.json();
       if (data.ok) {
         setVideoUploaded(true);
@@ -100,70 +150,57 @@ export function LocationPanel({
 
   return (
     <div
-      className={`absolute inset-x-0 bottom-0 z-50 flex max-h-[55%] flex-col overflow-y-auto rounded-t-2xl border-t border-zinc-200 bg-white p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.1)] ${isRoomy ? "min-h-[45%]" : ""}`}
+      className={`absolute inset-x-0 bottom-0 z-50 flex max-h-[55%] flex-col overflow-y-auto rounded-t-2xl border-t-4 border-ink bg-paper p-4 text-ink shadow-[0_-4px_16px_rgba(0,0,0,0.2)] ${isRoomy ? "min-h-[45%]" : ""}`}
     >
       <div className="mb-3 flex items-start justify-between">
         <div>
-          <p className="text-xs text-zinc-500">{location.regionName}지역</p>
+          <p className="label-tech text-[10px] text-muted">
+            {location.regionName}지역
+          </p>
           <h2 className="text-base font-bold">{location.name}</h2>
         </div>
         <button
           onClick={onClose}
-          className="text-xs text-zinc-400 underline underline-offset-2"
+          className="label-tech text-[10px] text-muted underline underline-offset-2"
         >
           닫기
         </button>
       </div>
 
       {!isCurrentRegion ? (
-        <p className="text-sm text-zinc-600">
+        <p className="text-sm text-ink">
           아직 이 지역으로 갈 차례가 아니에요.
           {targetRegionName && ` 다음 목적지는 ${targetRegionName}지역입니다.`}
         </p>
       ) : location.isClosed ? (
-        <p className="text-sm text-zinc-600">
+        <p className="text-sm text-ink">
           이미 마감된 포인트예요. 같은 지역의 다른 포인트로 가보세요.
         </p>
       ) : result?.result === "passed" ? (
         <div className="space-y-3">
-          <p className="text-center text-lg font-bold text-green-700">
-            통과! 🎉
-          </p>
-          {result.message && (
-            <p className="text-center text-xs text-zinc-400">
-              {result.message}
-            </p>
+          <StampReveal code={location.regionName.toUpperCase()} />
+          {result.mission && (
+            <div className="rounded-lg border-2 border-line bg-paper-panel p-3 text-center">
+              <p className="label-tech text-[10px] text-accent">
+                {MISSION_LABEL[result.mission.type] ?? result.mission.type} 미션
+              </p>
+              <p className="mt-2 text-lg leading-snug font-bold text-ink">
+                {result.mission.content || "자유곡으로 찬양해주세요."}
+              </p>
+            </div>
           )}
-          {result.mission &&
-            (() => {
-              const style =
-                MISSION_STYLE[result.mission.type] ?? MISSION_STYLE.WORD;
-              return (
-                <div
-                  className={`rounded-xl border-2 ${style.border} ${style.bg} p-4 text-center shadow-sm`}
-                >
-                  <p
-                    className={`text-xs font-bold tracking-wide ${style.text} uppercase`}
-                  >
-                    {MISSION_LABEL[result.mission.type] ?? result.mission.type}{" "}
-                    미션
-                  </p>
-                  <p className="mt-2 text-lg leading-snug font-semibold text-zinc-900">
-                    {result.mission.content || "자유곡으로 찬양해주세요."}
-                  </p>
-                </div>
-              );
-            })()}
 
-          <div className="border-t border-zinc-200 pt-3">
-            <p className="mb-1 text-xs font-semibold text-zinc-500">
+          <div className="border-t border-line pt-3">
+            <p className="label-tech mb-1 text-[10px] text-muted">
               미션 수행 영상 (10~20초)
             </p>
             {videoUploaded ? (
-              <p className="text-sm text-green-700">영상 업로드 완료!</p>
+              <p className="text-sm font-semibold text-accent">
+                영상 업로드 완료!
+              </p>
             ) : (
               <div className="flex gap-2">
-                <label className="flex-1 cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-center text-sm font-medium">
+                <label className="flex-1 cursor-pointer rounded-lg border-2 border-line px-3 py-2 text-center text-sm font-medium">
                   {videoFile ? videoFile.name : "영상 촬영"}
                   <input
                     type="file"
@@ -178,7 +215,7 @@ export function LocationPanel({
                 <button
                   onClick={handleVideoUpload}
                   disabled={!videoFile || videoUploading}
-                  className="flex-1 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+                  className="flex-1 rounded-lg bg-ink px-3 py-2 text-sm font-bold text-paper disabled:opacity-40"
                 >
                   {videoUploading ? "업로드 중..." : "영상 업로드"}
                 </button>
@@ -187,19 +224,19 @@ export function LocationPanel({
           </div>
         </div>
       ) : result?.result === "closed" ? (
-        <div className="space-y-2">
-          <p className="text-sm text-zinc-600">{result.message}</p>
-        </div>
+        <p className="text-sm text-ink">{result.message}</p>
       ) : result?.result === "wrong_region" ? (
-        <p className="text-sm text-zinc-600">{result.message}</p>
+        <p className="text-sm text-ink">{result.message}</p>
       ) : (
         <div className="space-y-3">
           {result?.result === "failed" && (
-            <p className="text-sm text-red-600">{result.message}</p>
+            <p className="rounded-lg border-2 border-accent bg-paper-panel p-2 text-sm font-medium text-accent">
+              {result.message}
+            </p>
           )}
 
           <div>
-            <p className="mb-1 text-xs font-semibold text-zinc-500">
+            <p className="label-tech mb-1 text-[10px] text-muted">
               기준 사진
             </p>
             {location.referencePhotoUrl ? (
@@ -207,10 +244,10 @@ export function LocationPanel({
               <img
                 src={location.referencePhotoUrl}
                 alt="기준 사진"
-                className="h-32 w-full rounded-lg object-cover"
+                className="h-32 w-full rounded-lg border border-line object-cover"
               />
             ) : (
-              <div className="flex h-32 w-full items-center justify-center rounded-lg bg-zinc-100 text-xs text-zinc-400">
+              <div className="flex h-32 w-full items-center justify-center rounded-lg border border-dashed border-line bg-paper-panel text-xs text-muted">
                 기준 사진 미등록 (더미 데이터)
               </div>
             )}
@@ -218,20 +255,20 @@ export function LocationPanel({
 
           {previewUrl && (
             <div>
-              <p className="mb-1 text-xs font-semibold text-zinc-500">
+              <p className="label-tech mb-1 text-[10px] text-muted">
                 내가 찍은 사진
               </p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
                 alt="업로드할 사진"
-                className="h-32 w-full rounded-lg object-cover"
+                className="h-32 w-full rounded-lg border border-line object-cover"
               />
             </div>
           )}
 
           <div className="flex gap-2">
-            <label className="flex-1 cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-center text-sm font-medium">
+            <label className="flex-1 cursor-pointer rounded-lg border-2 border-line bg-paper px-3 py-2 text-center text-sm font-medium">
               {file ? "사진 다시 찍기" : "사진 찍기"}
               <input
                 type="file"
@@ -244,7 +281,7 @@ export function LocationPanel({
             <button
               onClick={handleSubmit}
               disabled={!file || submitting}
-              className="flex-1 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+              className="flex-1 rounded-lg bg-accent px-3 py-2 text-sm font-bold text-paper disabled:opacity-40"
             >
               {submitting ? "판정 중..." : "제출하기"}
             </button>
@@ -253,7 +290,7 @@ export function LocationPanel({
           {result?.result === "failed" && (
             <button
               onClick={resetForRetry}
-              className="text-xs text-zinc-400 underline underline-offset-2"
+              className="text-xs text-muted underline underline-offset-2"
             >
               처음부터 다시
             </button>

@@ -185,17 +185,17 @@ export function KakaoMap({
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
       {status === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 text-sm text-zinc-500">
+        <div className="label-tech absolute inset-0 flex items-center justify-center bg-paper text-xs text-muted">
           지도를 불러오는 중...
         </div>
       )}
       {status === "error" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 px-6 text-center text-sm text-red-500">
+        <div className="absolute inset-0 flex items-center justify-center bg-paper px-6 text-center text-sm font-medium text-accent">
           지도를 불러오지 못했습니다. Kakao JS 키/도메인 등록을 확인해주세요.
         </div>
       )}
       {status === "ready" && locationDenied && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white">
+        <div className="label-tech absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border-2 border-ink bg-paper px-3 py-1.5 text-[10px] text-ink shadow">
           위치 권한이 없어 내 위치는 표시되지 않아요
         </div>
       )}

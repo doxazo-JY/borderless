@@ -5,6 +5,7 @@ import Link from "next/link";
 import { KakaoMap } from "@/components/KakaoMap";
 import { LocationPanel } from "@/components/LocationPanel";
 import { clearGroup } from "@/app/actions";
+import { teamColor } from "@/lib/team-colors";
 
 export type MapLocationInfo = {
   id: string;
@@ -23,7 +24,7 @@ export function MapScreen({
   targetRegionId,
   targetRegionName,
 }: {
-  group: { id: string; displayName: string };
+  group: { id: string; displayName: string; teamName: string };
   locations: MapLocationInfo[];
   targetRegionId: string | null;
   targetRegionName: string | null;
@@ -32,23 +33,31 @@ export function MapScreen({
   const selectedLocation = locations.find((l) => l.id === selectedId) ?? null;
 
   return (
-    <main className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
+    <main className="flex flex-1 flex-col bg-paper text-ink">
+      <div
+        className="flex items-center justify-between border-b-4 px-4 py-3"
+        style={{ borderColor: teamColor(group.teamName) }}
+      >
         <div>
-          <p className="text-xs text-zinc-500">선택된 그룹</p>
-          <h1 className="text-lg font-bold">{group.displayName}</h1>
+          <p className="label-tech text-[10px] text-muted">선택된 그룹</p>
+          <h1
+            className="text-lg font-extrabold"
+            style={{ color: teamColor(group.teamName) }}
+          >
+            {group.displayName}
+          </h1>
         </div>
         <div className="flex items-center gap-3">
           <Link
             href="/inventory"
-            className="text-xs text-zinc-500 underline underline-offset-2"
+            className="label-tech text-[10px] text-ink underline underline-offset-2"
           >
             인벤토리
           </Link>
           <form action={clearGroup}>
             <button
               type="submit"
-              className="text-xs text-zinc-500 underline underline-offset-2"
+              className="label-tech text-[10px] text-muted underline underline-offset-2"
             >
               다시 선택
             </button>
@@ -63,7 +72,7 @@ export function MapScreen({
         />
 
         {targetRegionName && (
-          <div className="absolute top-3 left-1/2 z-50 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-xs whitespace-nowrap text-white">
+          <div className="label-tech absolute top-3 left-1/2 z-50 -translate-x-1/2 rounded-full border-2 border-ink bg-paper px-3 py-1.5 text-[10px] whitespace-nowrap text-ink shadow-md">
             다음 목적지: {targetRegionName}지역
           </div>
         )}

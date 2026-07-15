@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 오리엔티어링 컨트롤 — 밝은 종이/카키톤 + 짙은 잉크 + 오렌지 액센트 (CLAUDE.md 확정 방향) */
+  --background: #efe8d6;
+  --foreground: #1b2a20;
+  --color-paper: #efe8d6;
+  --color-paper-panel: #e7dfc6;
+  --color-ink: #1b2a20;
+  --color-muted: #8c8264;
+  --color-line: #c9bfa0;
+  --color-accent: #e1591c;
+
+  --color-team-a: #c1432b;
+  --color-team-b: #2f6b4f;
+  --color-team-c: #2c5c8a;
+  --color-team-d: #8a6a2c;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-paper: var(--color-paper);
+  --color-paper-panel: var(--color-paper-panel);
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --color-line: var(--color-line);
+  --color-accent: var(--color-accent);
+  --color-team-a: var(--color-team-a);
+  --color-team-b: var(--color-team-b);
+  --color-team-c: var(--color-team-c);
+  --color-team-d: var(--color-team-d);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    var(--font-geist-sans),
+    -apple-system,
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    sans-serif;
+}
+
+/* 기술적/오리엔티어링 느낌의 라벨용 — 코드, 눈금, 소제목 */
+.label-tech {
+  font-family: var(--font-geist-mono), ui-monospace, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentGroup } from "@/lib/group";
 import { prisma } from "@/lib/prisma";
+import { teamColor } from "@/lib/team-colors";
 
 const GRANT_LABEL: Record<string, string> = {
   PENDING: "지급 대기중",
@@ -21,15 +22,18 @@ export default async function InventoryPage() {
   });
 
   return (
-    <main className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
+    <main className="flex flex-1 flex-col bg-paper text-ink">
+      <div
+        className="flex items-center justify-between border-b-4 px-4 py-3"
+        style={{ borderColor: teamColor(group.team.name) }}
+      >
         <div>
-          <p className="text-xs text-zinc-500">{group.displayName}</p>
-          <h1 className="text-lg font-bold">인벤토리</h1>
+          <p className="label-tech text-[10px] text-muted">{group.displayName}</p>
+          <h1 className="text-lg font-extrabold uppercase">인벤토리</h1>
         </div>
         <Link
           href="/map"
-          className="text-xs text-zinc-500 underline underline-offset-2"
+          className="label-tech text-[10px] text-muted underline underline-offset-2"
         >
           지도로 돌아가기
         </Link>
@@ -37,25 +41,28 @@ export default async function InventoryPage() {
 
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {submissions.length === 0 && (
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-muted">
             아직 통과한 포인트가 없어요. 지도에서 미션을 진행해보세요.
           </p>
         )}
 
         {submissions.map((s) => (
-          <div key={s.id} className="rounded-lg border border-zinc-200 p-3">
+          <div
+            key={s.id}
+            className="rounded-lg border-2 border-line bg-paper-panel p-3"
+          >
             <div className="mb-2 flex items-center justify-between">
               <div>
-                <p className="text-xs text-zinc-500">
+                <p className="label-tech text-[10px] text-muted">
                   {s.location.region.name}지역
                 </p>
-                <p className="text-sm font-semibold">{s.location.name}</p>
+                <p className="text-sm font-bold">{s.location.name}</p>
               </div>
               <span
-                className={`rounded-full px-2 py-1 text-xs font-medium ${
+                className={`label-tech rounded-full px-2 py-1 text-[10px] font-bold ${
                   s.grantStatus === "CONFIRMED"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-amber-100 text-amber-700"
+                    ? "bg-accent text-paper"
+                    : "border border-line bg-paper text-muted"
                 }`}
               >
                 {GRANT_LABEL[s.grantStatus] ?? s.grantStatus}
@@ -67,7 +74,7 @@ export default async function InventoryPage() {
                 {s.location.ingredients.map((ing) => (
                   <li
                     key={ing.id}
-                    className="rounded-full bg-zinc-100 px-2 py-1 text-xs"
+                    className="rounded-full border border-line bg-paper px-2 py-1 text-xs"
                   >
                     {ing.name}
                     {ing.variant ? ` (${ing.variant})` : ""}
@@ -75,7 +82,7 @@ export default async function InventoryPage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-zinc-400">연결된 재료 없음 (더미 데이터)</p>
+              <p className="text-xs text-muted">연결된 재료 없음 (더미 데이터)</p>
             )}
           </div>
         ))}

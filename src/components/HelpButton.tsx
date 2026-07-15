@@ -25,7 +25,7 @@ export function HelpButton() {
     <button
       onClick={handleClick}
       disabled={state !== "idle"}
-      className="fixed right-4 bottom-4 z-[60] rounded-full bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-lg disabled:opacity-70"
+      className="label-tech fixed right-4 bottom-4 z-[60] rounded-full border-2 border-ink bg-red-600 px-4 py-3 text-[11px] font-bold text-white shadow-lg disabled:opacity-70"
     >
       {state === "sent"
         ? "요청 완료!"
