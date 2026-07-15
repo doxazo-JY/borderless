@@ -1,0 +1,114 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { uploadPhoto } from "@/lib/storage";
+
+const SETUP_PATH = `/admin/${process.env.ADMIN_SECRET_PATH}/setup`;
+
+function refresh() {
+  revalidatePath(SETUP_PATH);
+}
+
+export async function createLocation(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const regionId = String(formData.get("regionId") ?? "");
+  const lat = parseFloat(String(formData.get("lat") ?? ""));
+  const lng = parseFloat(String(formData.get("lng") ?? ""));
+  const address = String(formData.get("address") ?? "").trim() || null;
+  const judgePromptRaw = String(formData.get("judgePrompt") ?? "").trim();
+  const missionId = String(formData.get("missionId") ?? "") || null;
+  const ingredientIds = formData.getAll("ingredientIds").map(String);
+  const photo = formData.get("referencePhoto");
+
+  if (!name || !regionId || Number.isNaN(lat) || Number.isNaN(lng)) {
+    throw new Error("이름, 지역, 좌표는 필수입니다.");
+  }
+
+  let referencePhotoUrl: string | undefined;
+  if (photo instanceof File && photo.size > 0) {
+    referencePhotoUrl = await uploadPhoto(photo, "reference");
+  }
+
+  await prisma.location.create({
+    data: {
+      name,
+      regionId,
+      lat,
+      lng,
+      address,
+      ...(judgePromptRaw ? { judgePrompt: judgePromptRaw } : {}),
+      missionId,
+      referencePhotoUrl,
+      ingredients: { connect: ingredientIds.map((id) => ({ id })) },
+    },
+  });
+
+  refresh();
+}
+
+export async function deleteLocation(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.location.delete({ where: { id } });
+  refresh();
+}
+
+export async function createMission(formData: FormData) {
+  const type = String(formData.get("type") ?? "");
+  const content = String(formData.get("content") ?? "").trim();
+  if (!["WORD", "PRAISE", "PRAYER"].includes(type)) {
+    throw new Error("잘못된 미션 유형입니다.");
+  }
+  await prisma.mission.create({
+    data: { type: type as "WORD" | "PRAISE" | "PRAYER", content },
+  });
+  refresh();
+}
+
+export async function deleteMission(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.mission.delete({ where: { id } });
+  refresh();
+}
+
+export async function createIngredient(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim();
+  const variant = String(formData.get("variant") ?? "").trim() || null;
+  const isBase = formData.get("isBase") === "on";
+
+  if (!name || !category) {
+    throw new Error("이름과 분류는 필수입니다.");
+  }
+
+  await prisma.ingredient.create({
+    data: { name, category, variant, isBase },
+  });
+  refresh();
+}
+
+export async function deleteIngredient(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.ingredient.delete({ where: { id } });
+  refresh();
+}
+
+export async function setGroupRegionOrder(formData: FormData) {
+  const groupId = String(formData.get("groupId") ?? "");
+  const regionIds = formData.getAll("regionOrder").map(String);
+  if (!groupId || regionIds.length === 0) return;
+
+  await prisma.$transaction([
+    prisma.groupRegionOrder.deleteMany({ where: { groupId } }),
+    ...regionIds.map((regionId, position) =>
+      prisma.groupRegionOrder.create({
+        data: { groupId, regionId, position },
+      }),
+    ),
+  ]);
+
+  refresh();
+}
