@@ -9,9 +9,16 @@ const MISSION_LABEL: Record<string, string> = {
   PRAYER: "기도",
 };
 
+const MISSION_STYLE: Record<string, { bg: string; border: string; text: string }> = {
+  WORD: { bg: "bg-blue-50", border: "border-blue-300", text: "text-blue-700" },
+  PRAISE: { bg: "bg-purple-50", border: "border-purple-300", text: "text-purple-700" },
+  PRAYER: { bg: "bg-amber-50", border: "border-amber-300", text: "text-amber-700" },
+};
+
 type SubmitResult = {
   result: "wrong_region" | "closed" | "failed" | "passed" | string;
   message?: string;
+  submissionId?: string;
   mission?: { type: string; content: string } | null;
 };
 
@@ -30,6 +37,9 @@ export function LocationPanel({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoUploaded, setVideoUploaded] = useState(false);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] ?? null;
@@ -65,6 +75,25 @@ export function LocationPanel({
     setResult(null);
   }
 
+  async function handleVideoUpload() {
+    if (!videoFile || !result?.submissionId) return;
+    setVideoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("video", videoFile);
+      const res = await fetch(`/api/submissions/${result.submissionId}/video`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setVideoUploaded(true);
+      }
+    } finally {
+      setVideoUploading(false);
+    }
+  }
+
   // 사진 업로드 UI/미션 공개처럼 내용이 있는 상태만 패널을 넉넉하게 채움.
   // "차례 아님"/"마감"처럼 짧은 안내 문구만 있을 때는 내용만큼만 차지.
   const isRoomy = isCurrentRegion && !location.isClosed;
@@ -97,20 +126,65 @@ export function LocationPanel({
         </p>
       ) : result?.result === "passed" ? (
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-green-700">통과! 🎉</p>
+          <p className="text-center text-lg font-bold text-green-700">
+            통과! 🎉
+          </p>
           {result.message && (
-            <p className="text-xs text-zinc-500">{result.message}</p>
+            <p className="text-center text-xs text-zinc-400">
+              {result.message}
+            </p>
           )}
-          {result.mission && (
-            <div className="rounded-lg border border-zinc-200 p-3">
-              <p className="text-xs font-semibold text-zinc-500">
-                {MISSION_LABEL[result.mission.type] ?? result.mission.type} 미션
-              </p>
-              <p className="mt-1 text-sm">
-                {result.mission.content || "자유곡으로 찬양해주세요."}
-              </p>
-            </div>
-          )}
+          {result.mission &&
+            (() => {
+              const style =
+                MISSION_STYLE[result.mission.type] ?? MISSION_STYLE.WORD;
+              return (
+                <div
+                  className={`rounded-xl border-2 ${style.border} ${style.bg} p-4 text-center shadow-sm`}
+                >
+                  <p
+                    className={`text-xs font-bold tracking-wide ${style.text} uppercase`}
+                  >
+                    {MISSION_LABEL[result.mission.type] ?? result.mission.type}{" "}
+                    미션
+                  </p>
+                  <p className="mt-2 text-lg leading-snug font-semibold text-zinc-900">
+                    {result.mission.content || "자유곡으로 찬양해주세요."}
+                  </p>
+                </div>
+              );
+            })()}
+
+          <div className="border-t border-zinc-200 pt-3">
+            <p className="mb-1 text-xs font-semibold text-zinc-500">
+              미션 수행 영상 (10~20초)
+            </p>
+            {videoUploaded ? (
+              <p className="text-sm text-green-700">영상 업로드 완료!</p>
+            ) : (
+              <div className="flex gap-2">
+                <label className="flex-1 cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-center text-sm font-medium">
+                  {videoFile ? videoFile.name : "영상 촬영"}
+                  <input
+                    type="file"
+                    accept="video/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) =>
+                      setVideoFile(e.target.files?.[0] ?? null)
+                    }
+                  />
+                </label>
+                <button
+                  onClick={handleVideoUpload}
+                  disabled={!videoFile || videoUploading}
+                  className="flex-1 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+                >
+                  {videoUploading ? "업로드 중..." : "영상 업로드"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       ) : result?.result === "closed" ? (
         <div className="space-y-2">

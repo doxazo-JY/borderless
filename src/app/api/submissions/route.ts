@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     });
   }
 
-  await prisma.submission.create({
+  const submission = await prisma.submission.create({
     data: {
       groupId: group.id,
       locationId: location.id,
@@ -121,6 +121,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     result: "passed",
     message: judgement.reason,
+    submissionId: submission.id,
     mission: location.mission
       ? { type: location.mission.type, content: location.mission.content }
       : null,

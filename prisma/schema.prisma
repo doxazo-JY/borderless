@@ -125,8 +125,8 @@ model HelpRequest {
   id         String            @id @default(cuid())
   groupId    String
   group      Group             @relation(fields: [groupId], references: [id])
-  locationId String
-  location   Location          @relation(fields: [locationId], references: [id])
+  locationId String? // 특정 장소 맥락 없이도(어떤 화면에서든) 요청 가능하도록 선택값
+  location   Location?         @relation(fields: [locationId], references: [id])
   status     HelpRequestStatus @default(OPEN)
   createdAt  DateTime          @default(now())
 }

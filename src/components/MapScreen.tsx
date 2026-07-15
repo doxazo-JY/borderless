@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { KakaoMap } from "@/components/KakaoMap";
 import { LocationPanel } from "@/components/LocationPanel";
 import { clearGroup } from "@/app/actions";
@@ -37,14 +38,22 @@ export function MapScreen({
           <p className="text-xs text-zinc-500">선택된 그룹</p>
           <h1 className="text-lg font-bold">{group.displayName}</h1>
         </div>
-        <form action={clearGroup}>
-          <button
-            type="submit"
+        <div className="flex items-center gap-3">
+          <Link
+            href="/inventory"
             className="text-xs text-zinc-500 underline underline-offset-2"
           >
-            다시 선택
-          </button>
-        </form>
+            인벤토리
+          </Link>
+          <form action={clearGroup}>
+            <button
+              type="submit"
+              className="text-xs text-zinc-500 underline underline-offset-2"
+            >
+              다시 선택
+            </button>
+          </form>
+        </div>
       </div>
 
       <div className="relative min-h-0 flex-1">
