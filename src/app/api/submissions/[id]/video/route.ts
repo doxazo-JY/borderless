@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentGroup } from "@/lib/group";
 import { supabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase";
 
+// 영상 바이트는 이 서버를 거치지 않고 브라우저 → Supabase Storage로 직접 업로드된다
+// (Vercel 서버리스 함수의 요청 크기 제한에 영상이 걸리지 않도록). 이 라우트는
+// 클라이언트가 직접 업로드할 수 있는 서명된 URL만 발급한다.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -18,32 +21,25 @@ export async function POST(
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 
-  const formData = await request.formData();
-  const video = formData.get("video");
-  if (!(video instanceof File)) {
-    return NextResponse.json({ ok: false }, { status: 400 });
-  }
-
-  const ext = video.name.split(".").pop() || "mp4";
+  const body = await request.json().catch(() => ({}));
+  const ext = typeof body?.ext === "string" ? body.ext.replace(/[^a-z0-9]/gi, "") || "mp4" : "mp4";
   const path = `videos/${group.id}/${submission.id}.${ext}`;
-  const arrayBuffer = await video.arrayBuffer();
 
-  const { error } = await supabaseAdmin.storage
+  const { data, error } = await supabaseAdmin.storage
     .from(STORAGE_BUCKET)
-    .upload(path, arrayBuffer, {
-      contentType: video.type || "video/mp4",
-      upsert: true,
-    });
-  if (error) {
-    return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
+    .createSignedUploadUrl(path, { upsert: true });
+
+  if (error || !data) {
+    return NextResponse.json(
+      { ok: false, message: error?.message },
+      { status: 500 },
+    );
   }
 
-  const { data } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-
-  await prisma.submission.update({
-    where: { id: submission.id },
-    data: { videoUrl: data.publicUrl },
+  return NextResponse.json({
+    ok: true,
+    path: data.path,
+    token: data.token,
+    bucket: STORAGE_BUCKET,
   });
-
-  return NextResponse.json({ ok: true, videoUrl: data.publicUrl });
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MapLocationInfo } from "@/components/MapScreen";
+import { supabaseBrowser } from "@/lib/supabase-client";
 
 const MISSION_LABEL: Record<string, string> = {
   WORD: "말씀",
@@ -129,16 +130,41 @@ export function LocationPanel({
     if (!videoFile || !result?.submissionId) return;
     setVideoUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("video", videoFile);
-      const res = await fetch(
+      const ext = videoFile.name.split(".").pop() || "mp4";
+
+      // 1. 서명된 업로드 URL 발급 (우리 서버는 영상 바이트를 거치지 않음)
+      const urlRes = await fetch(
         `/api/submissions/${result.submissionId}/video`,
-        { method: "POST", body: formData },
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ext }),
+        },
       );
-      const data = await res.json();
-      if (data.ok) {
+      const urlData = await urlRes.json();
+      if (!urlData.ok) throw new Error(urlData.message || "업로드 URL 발급 실패");
+
+      // 2. 브라우저 → Supabase Storage 직접 업로드
+      const { error: uploadError } = await supabaseBrowser.storage
+        .from(urlData.bucket)
+        .uploadToSignedUrl(urlData.path, urlData.token, videoFile);
+      if (uploadError) throw uploadError;
+
+      // 3. 업로드 완료를 서버에 알려 Submission.videoUrl 갱신
+      const completeRes = await fetch(
+        `/api/submissions/${result.submissionId}/video-complete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: urlData.path }),
+        },
+      );
+      const completeData = await completeRes.json();
+      if (completeData.ok) {
         setVideoUploaded(true);
       }
+    } catch (e) {
+      console.error("영상 업로드 실패:", e);
     } finally {
       setVideoUploading(false);
     }
