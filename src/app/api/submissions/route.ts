@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentGroup } from "@/lib/group";
 import { getCurrentTargetRegionId } from "@/lib/region-progress";
-import { uploadPhoto } from "@/lib/storage";
+import { supabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase";
 import { judgePhotoMatch } from "@/lib/judge";
 
 export async function POST(request: Request) {
@@ -11,11 +11,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ result: "no_group" }, { status: 401 });
   }
 
-  const formData = await request.formData();
-  const locationId = formData.get("locationId");
-  const photo = formData.get("photo");
+  // 사진 바이트는 이미 브라우저가 Supabase Storage로 직접 업로드해뒀고(photo-upload-url
+  // 라우트 참고), 여기서는 그 경로만 전달받는다.
+  const body = await request.json().catch(() => ({}));
+  const locationId = body?.locationId;
+  const photoPath = body?.photoPath;
 
-  if (typeof locationId !== "string" || !(photo instanceof File)) {
+  if (typeof locationId !== "string" || typeof photoPath !== "string") {
+    return NextResponse.json({ result: "invalid_request" }, { status: 400 });
+  }
+  if (!photoPath.startsWith(`submissions/${group.id}/`)) {
     return NextResponse.json({ result: "invalid_request" }, { status: 400 });
   }
 
@@ -74,7 +79,10 @@ export async function POST(request: Request) {
   }
 
   // 4. AI 판정
-  const photoUrl = await uploadPhoto(photo, `submissions/${group.id}`);
+  const { data: photoUrlData } = supabaseAdmin.storage
+    .from(STORAGE_BUCKET)
+    .getPublicUrl(photoPath);
+  const photoUrl = photoUrlData.publicUrl;
   const judgement = await judgePhotoMatch({
     referencePhotoUrl: location.referencePhotoUrl,
     uploadedPhotoUrl: photoUrl,

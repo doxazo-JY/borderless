@@ -108,13 +108,29 @@ export function LocationPanel({
     if (!file) return;
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append("locationId", location.id);
-      formData.append("photo", file);
+      const ext = file.name.split(".").pop() || "jpg";
 
+      // 1. 서명된 업로드 URL 발급 (우리 서버는 사진 바이트를 거치지 않음 —
+      // 폰 카메라 사진은 Vercel 서버리스 요청 크기 제한을 쉽게 넘을 수 있음)
+      const urlRes = await fetch("/api/submissions/photo-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ext }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlData.ok) throw new Error(urlData.message || "업로드 URL 발급 실패");
+
+      // 2. 브라우저 → Supabase Storage 직접 업로드
+      const { error: uploadError } = await supabaseBrowser.storage
+        .from(urlData.bucket)
+        .uploadToSignedUrl(urlData.path, urlData.token, file);
+      if (uploadError) throw uploadError;
+
+      // 3. 캡 확인 + AI 판정 요청 — 사진은 이미 Storage에 있으니 경로만 전달
       const res = await fetch("/api/submissions", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locationId: location.id, photoPath: urlData.path }),
       });
       if (!res.ok) throw new Error("요청 실패");
       const data: SubmitResult = await res.json();
