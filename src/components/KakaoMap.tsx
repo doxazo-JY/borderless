@@ -27,7 +27,9 @@ function getHeadingFromEvent(event: any): number | null {
     // iOS Safari — 이미 정북 기준 시계방향 각도
     return event.webkitCompassHeading;
   }
-  if (typeof event.alpha === "number") {
+  // absolute가 true일 때만 alpha를 신뢰한다 — 일반 deviceorientation의 alpha는
+  // 기기 초기 자세 기준 상대값이라 나침반 방향이 아님(가만히 있어도 안 도는 원인).
+  if (event.absolute === true && typeof event.alpha === "number") {
     // Android(deviceorientationabsolute) — alpha는 정북 기준 반시계 방향이라 뒤집어준다
     return (360 - event.alpha) % 360;
   }
@@ -68,11 +70,11 @@ export function KakaoMap({
       }
     }
 
-    const eventName =
-      "ondeviceorientationabsolute" in window
-        ? "deviceorientationabsolute"
-        : "deviceorientation";
-    window.addEventListener(eventName, handleOrientation);
+    // 이벤트 이름 사전 감지(`"ondeviceorientationabsolute" in window`)가 브라우저별로
+    // 오탐이 있어(그 이벤트가 실제론 안 터지는데도 감지됨), 대신 두 이벤트 다 듣고
+    // getHeadingFromEvent가 실제로 신뢰 가능한 값이 들어올 때만 반영하게 한다.
+    window.addEventListener("deviceorientationabsolute", handleOrientation);
+    window.addEventListener("deviceorientation", handleOrientation);
   }
 
   function requestCompassPermission() {
