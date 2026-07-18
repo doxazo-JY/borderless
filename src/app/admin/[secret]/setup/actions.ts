@@ -63,12 +63,14 @@ export async function updateLocationDetails(formData: FormData) {
   if (!id) return;
   const missionId = String(formData.get("missionId") ?? "") || null;
   const ingredientIds = formData.getAll("ingredientIds").map(String);
+  const judgePrompt = String(formData.get("judgePrompt") ?? "").trim();
 
   await prisma.location.update({
     where: { id },
     data: {
       missionId,
       ingredients: { set: ingredientIds.map((ingId) => ({ id: ingId })) },
+      ...(judgePrompt ? { judgePrompt } : {}),
     },
   });
 

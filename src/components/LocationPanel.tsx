@@ -24,6 +24,33 @@ function passCode(location: MapLocationInfo) {
   return `${location.regionName.toUpperCase()}-${location.id.slice(-4).toUpperCase()}`;
 }
 
+function ZoomableImage({
+  src,
+  alt,
+  className,
+  onZoom,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  onZoom: (src: string) => void;
+}) {
+  return (
+    <div className="relative">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        onClick={() => onZoom(src)}
+        className={`cursor-pointer ${className}`}
+      />
+      <span className="pointer-events-none absolute right-1.5 bottom-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-white">
+        🔍 확대
+      </span>
+    </div>
+  );
+}
+
 function PassCard({
   location,
   mission,
@@ -96,6 +123,7 @@ export function LocationPanel({
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploading, setVideoUploading] = useState(false);
   const [pulseShown, setPulseShown] = useState(false);
+  const [zoomSrc, setZoomSrc] = useState<string | null>(null);
   const router = useRouter();
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -209,7 +237,7 @@ export function LocationPanel({
 
   return (
     <div
-      className={`relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line bg-paper-panel px-4 pt-4 pb-16 text-ink ${isRoomy ? "min-h-[45dvh]" : ""}`}
+      className={`relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line bg-paper-panel px-4 pt-4 pb-4 text-ink ${isRoomy ? "min-h-[45dvh]" : ""}`}
     >
       <div className="mb-3 flex items-start justify-between">
         <div>
@@ -277,14 +305,14 @@ export function LocationPanel({
                     기준 사진
                   </p>
                   {location.referencePhotoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <ZoomableImage
                       src={location.referencePhotoUrl}
                       alt="기준 사진"
-                      className="h-28 w-full rounded-md border border-line object-contain bg-paper"
+                      onZoom={setZoomSrc}
+                      className="h-44 w-full rounded-md border border-line object-contain bg-paper"
                     />
                   ) : (
-                    <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                    <div className="flex h-44 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                       미등록
                     </div>
                   )}
@@ -294,14 +322,14 @@ export function LocationPanel({
                     내가 제출한 사진
                   </p>
                   {result.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <ZoomableImage
                       src={result.photoUrl}
                       alt="내가 제출한 사진"
-                      className="h-28 w-full rounded-md border border-line object-contain bg-paper"
+                      onZoom={setZoomSrc}
+                      className="h-44 w-full rounded-md border border-line object-contain bg-paper"
                     />
                   ) : (
-                    <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                    <div className="flex h-44 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                       기록 없음
                     </div>
                   )}
@@ -373,14 +401,14 @@ export function LocationPanel({
               기준 사진
             </p>
             {location.referencePhotoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <ZoomableImage
                 src={location.referencePhotoUrl}
                 alt="기준 사진"
-                className="h-32 w-full rounded-md border border-line object-contain bg-paper"
+                onZoom={setZoomSrc}
+                className="h-64 w-full rounded-md border border-line object-contain bg-paper"
               />
             ) : (
-              <div className="flex h-32 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+              <div className="flex h-64 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                 기준 사진 미등록 (더미 데이터)
               </div>
             )}
@@ -391,11 +419,11 @@ export function LocationPanel({
               <p className="label-tech mb-1 text-[10px] text-muted">
                 내가 찍은 사진
               </p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <ZoomableImage
                 src={previewUrl}
                 alt="업로드할 사진"
-                className="h-32 w-full rounded-md border border-line object-contain bg-paper"
+                onZoom={setZoomSrc}
+                className="h-64 w-full rounded-md border border-line object-contain bg-paper"
               />
             </div>
           )}
@@ -428,6 +456,26 @@ export function LocationPanel({
               처음부터 다시
             </button>
           )}
+        </div>
+      )}
+
+      {zoomSrc && (
+        <div
+          onClick={() => setZoomSrc(null)}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={zoomSrc}
+            alt="확대된 사진"
+            className="max-h-full max-w-full object-contain"
+          />
+          <button
+            onClick={() => setZoomSrc(null)}
+            className="absolute top-4 right-4 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-ink shadow"
+          >
+            닫기
+          </button>
         </div>
       )}
     </div>

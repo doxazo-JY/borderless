@@ -163,7 +163,11 @@ export function MapScreen({
         <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-panel shadow-[0_2px_6px_rgba(20,18,12,0.05)]">
           <div className="relative min-h-0 flex-1">
             <KakaoMap
-              locations={locations}
+              locations={locations.map((loc) => ({
+                ...loc,
+                isPassed: results[loc.id]?.result === "passed",
+                isClosed: loc.isClosed,
+              }))}
               onSelectLocation={(id) => setSelectedId(id)}
             />
           </div>

@@ -276,6 +276,7 @@ export default async function AdminSetupPage() {
                 locationId={loc.id}
                 currentMissionId={loc.missionId}
                 currentIngredientIds={loc.ingredients.map((ing) => ing.id)}
+                currentJudgePrompt={loc.judgePrompt}
                 missions={missionOptions}
                 ingredients={ingredientOptions}
               />

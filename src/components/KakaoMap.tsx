@@ -8,6 +8,8 @@ export type MapLocation = {
   regionName: string;
   lat: number;
   lng: number;
+  isPassed?: boolean;
+  isClosed?: boolean;
 };
 
 declare global {
@@ -20,6 +22,18 @@ declare global {
 
 const SCRIPT_ID = "kakao-maps-sdk";
 const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+
+function applyPinStatus(pinEl: HTMLDivElement, loc: MapLocation) {
+  const statusSuffix = loc.isPassed ? " (통과)" : loc.isClosed ? " (마감)" : "";
+  pinEl.title = `${loc.regionName}지역 · ${loc.name}${statusSuffix}`;
+  pinEl.style.background = loc.isPassed
+    ? "#16a34a"
+    : loc.isClosed
+      ? "#9ca3af"
+      : "#2563eb";
+  pinEl.style.opacity = loc.isClosed && !loc.isPassed ? "0.75" : "1";
+  pinEl.textContent = loc.isPassed ? "✓" : loc.isClosed ? "✕" : "";
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getHeadingFromEvent(event: any): number | null {
@@ -55,6 +69,9 @@ export function KakaoMap({
   }, [onSelectLocation]);
   // 개발 모드 StrictMode가 effect를 두 번 실행해도 지도가 중복 생성되지 않도록 가드
   const mapCreatedRef = useRef(false);
+  // 통과/마감 상태가 바뀔 때마다 지도(및 마커) 전체를 새로 만들지 않고, 이미 만들어둔
+  // 마커 DOM만 찾아서 색을 갱신하기 위한 위치별 참조
+  const pinElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   // 내 위치 마커의 방향(나침반) 부채꼴 — DOM을 직접 회전시켜야 해서 ref로 들고 있는다
   const compassConeRef = useRef<HTMLDivElement | null>(null);
   const compassAttachedRef = useRef(false);
@@ -124,16 +141,22 @@ export function KakaoMap({
           bounds.extend(position);
 
           const pinEl = document.createElement("div");
-          pinEl.title = `${loc.regionName}지역 · ${loc.name}`;
           Object.assign(pinEl.style, {
             width: "24px",
             height: "24px",
             borderRadius: "50%",
-            background: "#2563eb",
             border: "2px solid white",
             boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
             pointerEvents: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "12px",
+            fontWeight: "bold",
+            color: "white",
           });
+          applyPinStatus(pinEl, loc);
+          pinElsRef.current.set(loc.id, pinEl);
 
           new window.kakao.maps.CustomOverlay({
             position,
@@ -279,6 +302,16 @@ export function KakaoMap({
       script.onload = initMap;
       script.onerror = () => setStatus("error");
       document.head.appendChild(script);
+    }
+  }, [locations]);
+
+  // 마커 생성 자체는 최초 1회뿐이라(위 effect의 mapCreatedRef 가드), 통과/마감 상태가
+  // 바뀌었을 때 지도를 통째로 다시 만들지 않고 이미 그려둔 마커 DOM만 갱신한다 —
+  // 그래야 미션 통과 직후 지도를 새로고침하지 않아도 마커 색이 바로 바뀐다.
+  useEffect(() => {
+    for (const loc of locations) {
+      const pinEl = pinElsRef.current.get(loc.id);
+      if (pinEl) applyPinStatus(pinEl, loc);
     }
   }, [locations]);
 
