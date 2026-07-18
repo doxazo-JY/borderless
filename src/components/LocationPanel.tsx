@@ -231,9 +231,16 @@ export function LocationPanel({
   }
 
   const passed = result?.result === "passed";
-  // 통과 화면처럼 내용이 있는 상태만 패널을 넉넉하게 채움.
-  // "차례 아님"/"마감"처럼 짧은 안내 문구만 있을 때는 내용만큼만 차지.
-  const isRoomy = passed || (isCurrentRegion && !location.isClosed);
+  // 통과 화면이나 실제 업로드 폼처럼 내용이 있는 상태만 패널을 넉넉하게 채움.
+  // "이미 다른 포인트에서 통과함"/"차례 아님"/"마감" 같은 짧은 안내 문구만 있을
+  // 때는 그 텍스트만큼만 차지하고 빈 여백을 억지로 만들지 않는다.
+  const isRoomy =
+    passed ||
+    (!location.regionCompletedElsewhere &&
+      isCurrentRegion &&
+      !location.isClosed &&
+      result?.result !== "closed" &&
+      result?.result !== "wrong_region");
 
   return (
     <div
@@ -338,6 +345,12 @@ export function LocationPanel({
             </div>
           ) : (
             <div className="space-y-3">
+              <PassCard
+                location={location}
+                mission={result.mission}
+                showPulse={false}
+                onPulseEnd={() => {}}
+              />
               <p className="label-tech text-[10px] text-muted">
                 미션 수행 영상 (10~20초)
               </p>

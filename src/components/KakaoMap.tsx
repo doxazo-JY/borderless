@@ -8,7 +8,8 @@ export type MapLocation = {
   regionName: string;
   lat: number;
   lng: number;
-  isPassed?: boolean;
+  isPassed?: boolean; // 사진 판정 통과
+  isVideoDone?: boolean; // 미션 영상 업로드까지 완료
   isClosed?: boolean;
 };
 
@@ -24,15 +25,29 @@ const SCRIPT_ID = "kakao-maps-sdk";
 const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 
 function applyPinStatus(pinEl: HTMLDivElement, loc: MapLocation) {
-  const statusSuffix = loc.isPassed ? " (통과)" : loc.isClosed ? " (마감)" : "";
+  const statusSuffix = loc.isVideoDone
+    ? " (완료)"
+    : loc.isPassed
+      ? " (영상 대기)"
+      : loc.isClosed
+        ? " (마감)"
+        : "";
   pinEl.title = `${loc.regionName}지역 · ${loc.name}${statusSuffix}`;
-  pinEl.style.background = loc.isPassed
-    ? "#16a34a"
-    : loc.isClosed
-      ? "#9ca3af"
-      : "#2563eb";
+  pinEl.style.background = loc.isVideoDone
+    ? "#16a34a" // 완료(영상까지)
+    : loc.isPassed
+      ? "#e1591c" // 사진만 통과, 영상 대기 — 앱 액센트 컬러와 통일
+      : loc.isClosed
+        ? "#9ca3af"
+        : "#2563eb";
   pinEl.style.opacity = loc.isClosed && !loc.isPassed ? "0.75" : "1";
-  pinEl.textContent = loc.isPassed ? "✓" : loc.isClosed ? "✕" : "";
+  pinEl.textContent = loc.isVideoDone
+    ? "✓"
+    : loc.isPassed
+      ? "▶"
+      : loc.isClosed
+        ? "✕"
+        : "";
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,6 +76,7 @@ export function KakaoMap({
   const [status, setStatus] = useState<"loading" | "ready" | "error">(() =>
     KAKAO_APP_KEY ? "loading" : "error",
   );
+  const [showLegend, setShowLegend] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
   const [needsCompassPermission, setNeedsCompassPermission] = useState(false);
   const onSelectLocationRef = useRef(onSelectLocation);
@@ -340,6 +356,39 @@ export function KakaoMap({
         >
           🧭 나침반 방향 표시 켜기
         </button>
+      )}
+      {status === "ready" && (
+        // 우상단은 "다음 목적지/영상 업로드 남음" 배지가 진행률에 따라 지도 위쪽
+        // 좌우로 움직이며 겹칠 수 있어, 그 배지가 절대 닿지 않는 우하단에 둔다.
+        <div className="absolute right-2 bottom-2 z-40">
+          {showLegend && (
+            <div className="label-tech absolute right-0 bottom-full mb-1 space-y-1 rounded-md border border-line bg-paper-panel p-2 text-[10px] text-ink shadow-[0_4px_12px_-4px_rgba(20,18,12,0.3)]">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="h-3 w-3 shrink-0 rounded-full bg-[#2563eb]" />
+                미시도
+              </div>
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="h-3 w-3 shrink-0 rounded-full bg-[#e1591c]" />
+                통과 · 영상 대기
+              </div>
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="h-3 w-3 shrink-0 rounded-full bg-[#16a34a]" />
+                완료
+              </div>
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="h-3 w-3 shrink-0 rounded-full bg-[#9ca3af]" />
+                마감
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => setShowLegend((v) => !v)}
+            aria-label="마커 색 설명"
+            className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink bg-paper-panel text-xs font-bold text-ink shadow"
+          >
+            ?
+          </button>
+        </div>
       )}
     </div>
   );
