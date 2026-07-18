@@ -209,7 +209,7 @@ export function LocationPanel({
 
   return (
     <div
-      className={`relative z-10 flex max-h-[60%] flex-col overflow-y-auto border-t border-line bg-paper-panel px-4 pt-4 pb-16 text-ink ${isRoomy ? "min-h-[45%]" : ""}`}
+      className={`relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line bg-paper-panel px-4 pt-4 pb-16 text-ink ${isRoomy ? "min-h-[45dvh]" : ""}`}
     >
       <div className="mb-3 flex items-start justify-between">
         <div>
@@ -263,6 +263,14 @@ export function LocationPanel({
                 showPulse={!pulseShown}
                 onPulseEnd={() => setPulseShown(true)}
               />
+              {result.message && (
+                <div className="rounded-md border border-line bg-paper p-2">
+                  <p className="label-tech mb-1 text-[10px] text-muted">
+                    AI 판정 코멘트
+                  </p>
+                  <p className="text-sm text-ink">{result.message}</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <p className="label-tech mb-1 text-[10px] text-muted">
@@ -273,7 +281,7 @@ export function LocationPanel({
                     <img
                       src={location.referencePhotoUrl}
                       alt="기준 사진"
-                      className="h-28 w-full rounded-md border border-line object-cover"
+                      className="h-28 w-full rounded-md border border-line object-contain bg-paper"
                     />
                   ) : (
                     <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
@@ -290,7 +298,7 @@ export function LocationPanel({
                     <img
                       src={result.photoUrl}
                       alt="내가 제출한 사진"
-                      className="h-28 w-full rounded-md border border-line object-cover"
+                      className="h-28 w-full rounded-md border border-line object-contain bg-paper"
                     />
                   ) : (
                     <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
@@ -369,7 +377,7 @@ export function LocationPanel({
               <img
                 src={location.referencePhotoUrl}
                 alt="기준 사진"
-                className="h-32 w-full rounded-md border border-line object-cover"
+                className="h-32 w-full rounded-md border border-line object-contain bg-paper"
               />
             ) : (
               <div className="flex h-32 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
@@ -387,7 +395,7 @@ export function LocationPanel({
               <img
                 src={previewUrl}
                 alt="업로드할 사진"
-                className="h-32 w-full rounded-md border border-line object-cover"
+                className="h-32 w-full rounded-md border border-line object-contain bg-paper"
               />
             </div>
           )}

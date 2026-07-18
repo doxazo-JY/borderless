@@ -47,10 +47,44 @@ export async function createLocation(formData: FormData) {
   refresh();
 }
 
+export async function updateLocationPhoto(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const photo = formData.get("referencePhoto");
+  if (!id || !(photo instanceof File) || photo.size === 0) return;
+
+  const referencePhotoUrl = await uploadPhoto(photo, "reference");
+  await prisma.location.update({ where: { id }, data: { referencePhotoUrl } });
+
+  refresh();
+}
+
+export async function updateLocationDetails(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const missionId = String(formData.get("missionId") ?? "") || null;
+  const ingredientIds = formData.getAll("ingredientIds").map(String);
+
+  await prisma.location.update({
+    where: { id },
+    data: {
+      missionId,
+      ingredients: { set: ingredientIds.map((ingId) => ({ id: ingId })) },
+    },
+  });
+
+  refresh();
+}
+
 export async function deleteLocation(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  await prisma.location.delete({ where: { id } });
+  // Submission/HelpRequest는 이 location을 RESTRICT로 참조하므로, 이미 제출 기록이
+  // 있는 포인트를 지우면 FK 위반으로 서버 에러가 났다 — 관련 기록도 함께 정리한다.
+  await prisma.$transaction([
+    prisma.helpRequest.deleteMany({ where: { locationId: id } }),
+    prisma.submission.deleteMany({ where: { locationId: id } }),
+    prisma.location.delete({ where: { id } }),
+  ]);
   refresh();
 }
 

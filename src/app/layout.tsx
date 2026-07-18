@@ -31,7 +31,10 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex h-full flex-col">
+      {/* 모바일 브라우저에서 h-full(=100%)은 주소창이 접히기 전 최대 높이 기준으로
+          계산되는 경우가 있어, 실제 화면보다 콘텐츠가 길어져도 스크롤로 빠져나갈
+          방법이 없어지는 문제가 있었다. 실시간 뷰포트를 따라가는 dvh로 교체. */}
+      <body className="flex h-dvh flex-col">
         {children}
         {group && <HelpButton />}
       </body>

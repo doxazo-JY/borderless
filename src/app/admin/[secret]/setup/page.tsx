@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { LocationForm } from "@/components/admin/LocationForm";
+import { LocationPhotoUpload } from "@/components/admin/LocationPhotoUpload";
+import { LocationDetailsEditor } from "@/components/admin/LocationDetailsEditor";
+import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
 import {
   createIngredient,
   createMission,
@@ -39,8 +42,17 @@ export default async function AdminSetupPage() {
     ],
   );
 
+  const missionOptions = missions.map((m) => ({
+    id: m.id,
+    label: `${MISSION_LABEL[m.type] ?? m.type} — ${m.content || "(자유곡)"}`,
+  }));
+  const ingredientOptions = ingredients.map((ing) => ({
+    id: ing.id,
+    label: `${ing.name}${ing.variant ? `(${ing.variant})` : ""}`,
+  }));
+
   return (
-    <main className="mx-auto max-w-2xl space-y-8 p-4">
+    <main className="mx-auto max-w-5xl space-y-8 p-4">
       <h1 className="text-xl font-bold">어드민 설정</h1>
 
       {/* 지역 (읽기 전용) */}
@@ -52,7 +64,7 @@ export default async function AdminSetupPage() {
       {/* 팀/조 (읽기 전용) */}
       <section>
         <h2 className="mb-2 text-sm font-bold text-zinc-500">팀 / 조</h2>
-        <ul className="space-y-1 text-sm">
+        <ul className="grid grid-cols-2 gap-1 text-sm sm:grid-cols-4">
           {teams.flatMap((t) =>
             t.groups.map((g) => <li key={g.id}>{g.displayName}</li>),
           )}
@@ -64,7 +76,7 @@ export default async function AdminSetupPage() {
         <h2 className="mb-2 text-sm font-bold text-zinc-500">
           그룹별 지역 방문 순서 (강제)
         </h2>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {teams.flatMap((t) =>
             t.groups.map((g) => (
               <form
@@ -106,7 +118,7 @@ export default async function AdminSetupPage() {
       {/* 미션 */}
       <section>
         <h2 className="mb-2 text-sm font-bold text-zinc-500">미션</h2>
-        <ul className="mb-3 space-y-1">
+        <ul className="mb-3 grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
           {missions.map((m) => (
             <li
               key={m.id}
@@ -120,7 +132,9 @@ export default async function AdminSetupPage() {
               </span>
               <form action={deleteMission}>
                 <input type="hidden" name="id" value={m.id} />
-                <button className="text-xs text-red-500 underline">삭제</button>
+                <ConfirmDeleteButton
+                  confirmText={`"${MISSION_LABEL[m.type] ?? m.type} — ${m.content || "자유곡"}" 미션을 삭제하시겠습니까?`}
+                />
               </form>
             </li>
           ))}
@@ -148,7 +162,7 @@ export default async function AdminSetupPage() {
       {/* 재료 */}
       <section>
         <h2 className="mb-2 text-sm font-bold text-zinc-500">재료</h2>
-        <ul className="mb-3 space-y-1">
+        <ul className="mb-3 grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
           {ingredients.map((ing) => (
             <li
               key={ing.id}
@@ -161,7 +175,9 @@ export default async function AdminSetupPage() {
               </span>
               <form action={deleteIngredient}>
                 <input type="hidden" name="id" value={ing.id} />
-                <button className="text-xs text-red-500 underline">삭제</button>
+                <ConfirmDeleteButton
+                  confirmText={`"${ing.name}${ing.variant ? ` (${ing.variant})` : ""}" 재료를 삭제하시겠습니까?`}
+                />
               </form>
             </li>
           ))}
@@ -201,41 +217,76 @@ export default async function AdminSetupPage() {
         <h2 className="mb-2 text-sm font-bold text-zinc-500">
           방문포인트 ({locations.length}개)
         </h2>
-        <ul className="mb-3 space-y-2">
+        <ul className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {locations.map((loc) => (
             <li
               key={loc.id}
-              className="flex items-start justify-between rounded border border-zinc-200 p-2 text-sm"
+              className="flex flex-col gap-2 rounded border border-zinc-200 p-2 text-sm"
             >
-              <div>
-                <p className="font-medium">
-                  {loc.region.name}지역 · {loc.name}
-                </p>
-                <p className="text-xs text-zinc-500">
-                  {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)} · 캡{" "}
-                  {loc.claimedCount}/{loc.capacity} ·{" "}
-                  {loc.mission ? MISSION_LABEL[loc.mission.type] : "미션 없음"} ·{" "}
-                  {loc.referencePhotoUrl ? "기준사진 있음" : "기준사진 없음"}
-                </p>
+              <div className="flex gap-2">
+                {loc.referencePhotoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={loc.referencePhotoUrl}
+                    alt=""
+                    className="h-14 w-14 shrink-0 rounded object-cover"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded border border-dashed border-zinc-300 text-center text-[9px] text-zinc-400">
+                    사진 없음
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {loc.region.name}지역 · {loc.name}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    캡 {loc.claimedCount}/{loc.capacity} ·{" "}
+                    {loc.mission ? MISSION_LABEL[loc.mission.type] : "미션 없음"}
+                  </p>
+                  <p className="truncate text-xs text-zinc-500">
+                    재료:{" "}
+                    {loc.ingredients.length > 0
+                      ? loc.ingredients
+                          .map(
+                            (ing) =>
+                              `${ing.name}${ing.variant ? `(${ing.variant})` : ""}`,
+                          )
+                          .join(", ")
+                      : "없음"}
+                  </p>
+                </div>
               </div>
-              <form action={deleteLocation}>
-                <input type="hidden" name="id" value={loc.id} />
-                <button className="text-xs text-red-500 underline">삭제</button>
-              </form>
+              <div className="flex items-center justify-between">
+                <LocationPhotoUpload
+                  locationId={loc.id}
+                  hasPhoto={!!loc.referencePhotoUrl}
+                />
+                <form action={deleteLocation}>
+                  <input type="hidden" name="id" value={loc.id} />
+                  <ConfirmDeleteButton
+                    confirmText={`"${loc.region.name}지역 · ${loc.name}" 포인트를 삭제하시겠습니까?\n연결된 제출/도움요청 기록도 함께 삭제됩니다.`}
+                  />
+                </form>
+              </div>
+              <LocationDetailsEditor
+                locationId={loc.id}
+                currentMissionId={loc.missionId}
+                currentIngredientIds={loc.ingredients.map((ing) => ing.id)}
+                missions={missionOptions}
+                ingredients={ingredientOptions}
+              />
             </li>
           ))}
         </ul>
 
         <LocationForm
           regions={regions.map((r) => ({ id: r.id, label: r.name }))}
-          missions={missions.map((m) => ({
-            id: m.id,
-            label: `${MISSION_LABEL[m.type] ?? m.type} — ${m.content || "(자유곡)"}`,
-          }))}
-          ingredients={ingredients.map((ing) => ({
-            id: ing.id,
-            label: `${ing.name}${ing.variant ? `(${ing.variant})` : ""}`,
-          }))}
+          missions={missionOptions}
+          ingredients={ingredientOptions}
         />
       </section>
     </main>

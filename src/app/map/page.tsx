@@ -43,6 +43,7 @@ export default async function MapPage() {
           : null,
         photoUrl: s.photoUrl,
         videoUrl: s.videoUrl,
+        aiReason: s.aiReason,
       },
     ]),
   );

@@ -22,6 +22,7 @@ export type MapLocationInfo = {
     mission: { type: string; content: string } | null;
     photoUrl: string | null;
     videoUrl: string | null;
+    aiReason: string | null;
   } | null;
   regionCompletedElsewhere: {
     locationName: string;
@@ -41,6 +42,7 @@ function regionInitialResult(
     mission: location.passedInfo.mission,
     photoUrl: location.passedInfo.photoUrl,
     videoUrl: location.passedInfo.videoUrl,
+    message: location.passedInfo.aiReason ?? undefined,
   };
 }
 

@@ -5,6 +5,36 @@ import { createLocation } from "@/app/admin/[secret]/setup/actions";
 
 type Option = { id: string; label: string };
 
+const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+const KAKAO_SCRIPT_ID = "kakao-maps-sdk-services";
+
+// 지도 화면(KakaoMap.tsx)과 별개 페이지라 SDK가 아직 안 실려있을 수 있어, 주소 검색
+// 버튼을 처음 누를 때 지오코딩에 필요한 services 라이브러리만 지연 로드한다.
+function loadKakaoServices(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.kakao?.maps?.services) {
+      resolve();
+      return;
+    }
+    const existing = document.getElementById(
+      KAKAO_SCRIPT_ID,
+    ) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", () =>
+        window.kakao.maps.load(() => resolve()),
+      );
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = KAKAO_SCRIPT_ID;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false&libraries=services`;
+    script.async = true;
+    script.onload = () => window.kakao.maps.load(() => resolve());
+    script.onerror = () => reject(new Error("Kakao SDK 로드 실패"));
+    document.head.appendChild(script);
+  });
+}
+
 export function LocationForm({
   regions,
   missions,
@@ -14,11 +44,15 @@ export function LocationForm({
   missions: Option[];
   ingredients: Option[];
 }) {
+  const [address, setAddress] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "error">(
     "idle",
   );
+  const [addressStatus, setAddressStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   function useMyLocation() {
@@ -35,6 +69,32 @@ export function LocationForm({
       },
       () => setGpsStatus("error"),
     );
+  }
+
+  async function findByAddress() {
+    if (!address.trim() || !KAKAO_APP_KEY) {
+      setAddressStatus("error");
+      return;
+    }
+    setAddressStatus("loading");
+    try {
+      await loadKakaoServices();
+      const geocoder = new window.kakao.maps.services.Geocoder();
+      geocoder.addressSearch(
+        address.trim(),
+        (result: { y: string; x: string }[], status: string) => {
+          if (status === window.kakao.maps.services.Status.OK && result[0]) {
+            setLat(Number(result[0].y).toFixed(7));
+            setLng(Number(result[0].x).toFixed(7));
+            setAddressStatus("idle");
+          } else {
+            setAddressStatus("error");
+          }
+        },
+      );
+    } catch {
+      setAddressStatus("error");
+    }
   }
 
   return (
@@ -71,11 +131,28 @@ export function LocationForm({
       </div>
 
       <label className="block text-xs text-zinc-500">
-        주소 (선택, 사전 계획용)
-        <input
-          name="address"
-          className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm"
-        />
+        주소 (선택 — 입력 후 아래 버튼으로 좌표 변환 가능)
+        <div className="mt-1 flex gap-2">
+          <input
+            name="address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="flex-1 rounded border border-zinc-300 p-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={findByAddress}
+            className="shrink-0 rounded border border-zinc-300 px-2 py-1 text-xs font-medium"
+          >
+            {addressStatus === "loading" ? "찾는 중..." : "주소로 좌표 찾기"}
+          </button>
+        </div>
+        {addressStatus === "error" && (
+          <p className="mt-1 text-xs text-red-600">
+            좌표를 찾지 못했어요. 주소를 다시 확인하거나 아래에서 직접
+            입력/GPS로 채워주세요.
+          </p>
+        )}
       </label>
 
       <div>
@@ -133,7 +210,7 @@ export function LocationForm({
         <img
           src={photoPreview}
           alt="미리보기"
-          className="h-32 w-full rounded object-cover"
+          className="h-32 w-full rounded bg-zinc-100 object-contain"
         />
       )}
 
