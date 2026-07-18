@@ -52,12 +52,14 @@ export function MapScreen({
   regionProgress,
   targetRegionId,
   targetRegionName,
+  groupSelectionLocked,
 }: {
   group: { id: string; displayName: string; teamName: string };
   locations: MapLocationInfo[];
   regionProgress: RegionProgressItem[];
   targetRegionId: string | null;
   targetRegionName: string | null;
+  groupSelectionLocked: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // 그룹이 위치 패널을 닫고 지도만 보다가 다시 열어도(마커 재클릭) 통과 상태/영상 업로드
@@ -105,14 +107,16 @@ export function MapScreen({
             >
               인벤토리
             </Link>
-            <form action={clearGroup}>
-              <button
-                type="submit"
-                className="label-tech text-[10px] text-muted underline underline-offset-2"
-              >
-                다시 선택
-              </button>
-            </form>
+            {!groupSelectionLocked && (
+              <form action={clearGroup}>
+                <button
+                  type="submit"
+                  className="label-tech text-[10px] text-muted underline underline-offset-2"
+                >
+                  다시 선택
+                </button>
+              </form>
+            )}
           </div>
         </div>
 

@@ -3,11 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { uploadPhoto } from "@/lib/storage";
+import { getAppSettings } from "@/lib/settings";
 
 const SETUP_PATH = `/admin/${process.env.ADMIN_SECRET_PATH}/setup`;
 
 function refresh() {
   revalidatePath(SETUP_PATH);
+}
+
+export async function toggleGroupSelectionLock() {
+  const settings = await getAppSettings();
+  await prisma.appSettings.update({
+    where: { id: settings.id },
+    data: { groupSelectionLocked: !settings.groupSelectionLocked },
+  });
+  refresh();
 }
 
 export async function createLocation(formData: FormData) {

@@ -5,6 +5,7 @@ import {
   getGroupRegionProgress,
   getTeamClosedLocationIds,
 } from "@/lib/region-progress";
+import { getAppSettings } from "@/lib/settings";
 import { MapScreen } from "@/components/MapScreen";
 
 export default async function MapPage() {
@@ -18,7 +19,7 @@ export default async function MapPage() {
     orderBy: [{ region: { name: "asc" } }, { name: "asc" }],
   });
 
-  const [regionProgress, closedLocationIds, passedSubmissions] =
+  const [regionProgress, closedLocationIds, passedSubmissions, settings] =
     await Promise.all([
       getGroupRegionProgress(group.id),
       getTeamClosedLocationIds(group.teamId),
@@ -26,6 +27,7 @@ export default async function MapPage() {
         where: { groupId: group.id, aiPassed: true },
         include: { location: { include: { mission: true } } },
       }),
+      getAppSettings(),
     ]);
 
   const targetRegionId =
@@ -97,6 +99,7 @@ export default async function MapPage() {
       regionProgress={regionProgress}
       targetRegionId={targetRegionId}
       targetRegionName={targetRegionName}
+      groupSelectionLocked={settings.groupSelectionLocked}
     />
   );
 }

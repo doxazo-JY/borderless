@@ -3,6 +3,8 @@ import { LocationForm } from "@/components/admin/LocationForm";
 import { LocationPhotoUpload } from "@/components/admin/LocationPhotoUpload";
 import { LocationDetailsEditor } from "@/components/admin/LocationDetailsEditor";
 import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
+import { GroupLockToggle } from "@/components/admin/GroupLockToggle";
+import { getAppSettings } from "@/lib/settings";
 import {
   createIngredient,
   createMission,
@@ -19,8 +21,8 @@ const MISSION_LABEL: Record<string, string> = {
 };
 
 export default async function AdminSetupPage() {
-  const [regions, locations, missions, ingredients, teams] = await Promise.all(
-    [
+  const [regions, locations, missions, ingredients, teams, settings] =
+    await Promise.all([
       prisma.region.findMany({ orderBy: { name: "asc" } }),
       prisma.location.findMany({
         include: { region: true, mission: true, ingredients: true },
@@ -39,8 +41,8 @@ export default async function AdminSetupPage() {
           },
         },
       }),
-    ],
-  );
+      getAppSettings(),
+    ]);
 
   const missionOptions = missions.map((m) => ({
     id: m.id,
@@ -64,11 +66,12 @@ export default async function AdminSetupPage() {
       {/* 팀/조 (읽기 전용) */}
       <section>
         <h2 className="mb-2 text-sm font-bold text-zinc-500">팀 / 조</h2>
-        <ul className="grid grid-cols-2 gap-1 text-sm sm:grid-cols-4">
+        <ul className="mb-3 grid grid-cols-2 gap-1 text-sm sm:grid-cols-4">
           {teams.flatMap((t) =>
             t.groups.map((g) => <li key={g.id}>{g.displayName}</li>),
           )}
         </ul>
+        <GroupLockToggle locked={settings.groupSelectionLocked} />
       </section>
 
       {/* 그룹별 지역 방문 순서 */}

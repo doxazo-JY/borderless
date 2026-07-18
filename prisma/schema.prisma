@@ -31,6 +31,12 @@ enum HelpRequestStatus {
   RESOLVED
 }
 
+// 참가자 팀/조 선택 관련 전역 설정. 항상 딱 한 행만 존재한다(getOrCreate로 보장).
+model AppSettings {
+  id                   String  @id @default(cuid())
+  groupSelectionLocked Boolean @default(false)
+}
+
 model Team {
   id     String  @id @default(cuid())
   name   String  @unique // A/B/C/D
