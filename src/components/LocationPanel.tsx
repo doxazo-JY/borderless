@@ -408,37 +408,43 @@ export function LocationPanel({
             </p>
           )}
 
-          <div>
-            <p className="label-tech mb-1 text-[10px] text-muted">
-              기준 사진
-            </p>
-            {location.referencePhotoUrl ? (
-              <ZoomableImage
-                src={location.referencePhotoUrl}
-                alt="기준 사진"
-                onZoom={setZoomSrc}
-                className="h-64 w-full rounded-md border border-line object-contain bg-paper"
-              />
-            ) : (
-              <div className="flex h-64 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
-                기준 사진 미등록 (더미 데이터)
-              </div>
-            )}
-          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="label-tech mb-1 text-[10px] text-muted">
+                기준 사진
+              </p>
+              {location.referencePhotoUrl ? (
+                <ZoomableImage
+                  src={location.referencePhotoUrl}
+                  alt="기준 사진"
+                  onZoom={setZoomSrc}
+                  className="h-44 w-full rounded-md border border-line object-contain bg-paper"
+                />
+              ) : (
+                <div className="flex h-44 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                  기준 사진 미등록 (더미 데이터)
+                </div>
+              )}
+            </div>
 
-          {previewUrl && (
             <div>
               <p className="label-tech mb-1 text-[10px] text-muted">
                 내가 찍은 사진
               </p>
-              <ZoomableImage
-                src={previewUrl}
-                alt="업로드할 사진"
-                onZoom={setZoomSrc}
-                className="h-64 w-full rounded-md border border-line object-contain bg-paper"
-              />
+              {previewUrl || result?.photoUrl ? (
+                <ZoomableImage
+                  src={previewUrl ?? result!.photoUrl!}
+                  alt="업로드할 사진"
+                  onZoom={setZoomSrc}
+                  className="h-44 w-full rounded-md border border-line object-contain bg-paper"
+                />
+              ) : (
+                <div className="flex h-44 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                  아직 없음
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="flex gap-2">
             <label className="flex-1 cursor-pointer rounded-md border border-line bg-paper-panel px-3 py-2 text-center text-sm font-medium">
@@ -481,9 +487,11 @@ export function LocationPanel({
             alt="확대된 사진"
             className="max-h-full max-w-full object-contain"
           />
+          {/* 우상단은 실기기에서 노치/브라우저 상단 UI에 가려 안 보이는 경우가 있어
+              하단 중앙으로 옮김 — 어차피 사진/배경 아무 곳이나 탭해도 닫힌다. */}
           <button
             onClick={() => setZoomSrc(null)}
-            className="absolute top-4 right-4 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-ink shadow"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-bold text-ink shadow"
           >
             닫기
           </button>

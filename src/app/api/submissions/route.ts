@@ -103,6 +103,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       result: "failed",
       message: judgement.reason || "사진이 기준과 일치하지 않아요. 다른 사진으로 다시 시도해보세요.",
+      photoUrl,
     });
   }
 

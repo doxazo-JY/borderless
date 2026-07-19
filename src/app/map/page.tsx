@@ -57,11 +57,18 @@ export default async function MapPage() {
   );
 
   // 실패는 여러 번 쌓일 수 있으니, locationId당 가장 최근(맨 처음 만나는) 것만 쓴다
-  // (failedSubmissions가 이미 createdAt desc로 정렬돼 있음).
-  const lastFailedByLocationId = new Map<string, string>();
+  // (failedSubmissions가 이미 createdAt desc로 정렬돼 있음). 사진도 같이 내려줘서
+  // 새로고침 후에도 뭘 올렸었는지 계속 보이게 한다.
+  const lastFailedByLocationId = new Map<
+    string,
+    { message: string; photoUrl: string | null }
+  >();
   for (const s of failedSubmissions) {
     if (!lastFailedByLocationId.has(s.locationId)) {
-      lastFailedByLocationId.set(s.locationId, s.aiReason ?? "");
+      lastFailedByLocationId.set(s.locationId, {
+        message: s.aiReason ?? "",
+        photoUrl: s.photoUrl,
+      });
     }
   }
 
@@ -93,7 +100,7 @@ export default async function MapPage() {
       referencePhotoUrl: loc.referencePhotoUrl,
       isClosed: closedLocationIds.has(loc.id),
       passedInfo: passedByLocationId.get(loc.id) ?? null,
-      lastFailedMessage: lastFailedByLocationId.get(loc.id) ?? null,
+      lastFailedInfo: lastFailedByLocationId.get(loc.id) ?? null,
       regionCompletedElsewhere:
         regionPassed && regionPassed.locationId !== loc.id
           ? {

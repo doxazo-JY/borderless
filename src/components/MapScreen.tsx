@@ -28,7 +28,7 @@ export type MapLocationInfo = {
     locationName: string;
     videoUploaded: boolean;
   } | null;
-  lastFailedMessage: string | null;
+  lastFailedInfo: { message: string; photoUrl: string | null } | null;
 };
 
 export type PanelStep = "pass" | "video";
@@ -46,10 +46,14 @@ function regionInitialResult(
       message: location.passedInfo.aiReason ?? undefined,
     };
   }
-  // 실패 사유는 통과와 달리 서버 state가 따로 없었어서 새로고침하면 사라졌다 —
-  // 아직 통과 못 한 위치에 마지막 실패 사유가 있으면 그것도 초기값으로 채워준다.
-  if (location.lastFailedMessage) {
-    return { result: "failed", message: location.lastFailedMessage };
+  // 실패 사유(+제출했던 사진)는 통과와 달리 서버 state가 따로 없었어서 새로고침하면
+  // 사라졌다 — 아직 통과 못 한 위치에 마지막 실패 기록이 있으면 그것도 채워준다.
+  if (location.lastFailedInfo) {
+    return {
+      result: "failed",
+      message: location.lastFailedInfo.message,
+      photoUrl: location.lastFailedInfo.photoUrl,
+    };
   }
   return undefined;
 }
