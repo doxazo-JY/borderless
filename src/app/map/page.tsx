@@ -19,13 +19,19 @@ export default async function MapPage() {
     orderBy: [{ region: { name: "asc" } }, { name: "asc" }],
   });
 
-  const [regionProgress, closedLocationIds, passedSubmissions, settings] =
+  const [regionProgress, closedLocationIds, passedSubmissions, failedSubmissions, settings] =
     await Promise.all([
       getGroupRegionProgress(group.id),
       getTeamClosedLocationIds(group.teamId),
       prisma.submission.findMany({
         where: { groupId: group.id, aiPassed: true },
         include: { location: { include: { mission: true } } },
+      }),
+      // 실패 사유도 새로고침 후 계속 보이게 하려면 서버에서 같이 내려줘야 한다 —
+      // 통과 여부와 달리 실패는 클라이언트 state에만 있어서 새로고침하면 사라졌음.
+      prisma.submission.findMany({
+        where: { groupId: group.id, aiPassed: false },
+        orderBy: { createdAt: "desc" },
       }),
       getAppSettings(),
     ]);
@@ -49,6 +55,15 @@ export default async function MapPage() {
       },
     ]),
   );
+
+  // 실패는 여러 번 쌓일 수 있으니, locationId당 가장 최근(맨 처음 만나는) 것만 쓴다
+  // (failedSubmissions가 이미 createdAt desc로 정렬돼 있음).
+  const lastFailedByLocationId = new Map<string, string>();
+  for (const s of failedSubmissions) {
+    if (!lastFailedByLocationId.has(s.locationId)) {
+      lastFailedByLocationId.set(s.locationId, s.aiReason ?? "");
+    }
+  }
 
   // 지역당 통과는 한 곳만 규칙 — 그룹이 이미 통과한 지역이면(다른 포인트라도),
   // 이 지역의 나머지 포인트에는 "여기서 이미 통과했다"는 안내만 보여준다.
@@ -78,6 +93,7 @@ export default async function MapPage() {
       referencePhotoUrl: loc.referencePhotoUrl,
       isClosed: closedLocationIds.has(loc.id),
       passedInfo: passedByLocationId.get(loc.id) ?? null,
+      lastFailedMessage: lastFailedByLocationId.get(loc.id) ?? null,
       regionCompletedElsewhere:
         regionPassed && regionPassed.locationId !== loc.id
           ? {

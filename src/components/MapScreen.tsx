@@ -28,6 +28,7 @@ export type MapLocationInfo = {
     locationName: string;
     videoUploaded: boolean;
   } | null;
+  lastFailedMessage: string | null;
 };
 
 export type PanelStep = "pass" | "video";
@@ -35,15 +36,22 @@ export type PanelStep = "pass" | "video";
 function regionInitialResult(
   location: MapLocationInfo,
 ): SubmitResult | undefined {
-  if (!location.passedInfo) return undefined;
-  return {
-    result: "passed",
-    submissionId: location.passedInfo.submissionId,
-    mission: location.passedInfo.mission,
-    photoUrl: location.passedInfo.photoUrl,
-    videoUrl: location.passedInfo.videoUrl,
-    message: location.passedInfo.aiReason ?? undefined,
-  };
+  if (location.passedInfo) {
+    return {
+      result: "passed",
+      submissionId: location.passedInfo.submissionId,
+      mission: location.passedInfo.mission,
+      photoUrl: location.passedInfo.photoUrl,
+      videoUrl: location.passedInfo.videoUrl,
+      message: location.passedInfo.aiReason ?? undefined,
+    };
+  }
+  // 실패 사유는 통과와 달리 서버 state가 따로 없었어서 새로고침하면 사라졌다 —
+  // 아직 통과 못 한 위치에 마지막 실패 사유가 있으면 그것도 초기값으로 채워준다.
+  if (location.lastFailedMessage) {
+    return { result: "failed", message: location.lastFailedMessage };
+  }
+  return undefined;
 }
 
 export function MapScreen({
