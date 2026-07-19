@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { MapLocationInfo, PanelStep } from "@/components/MapScreen";
 import { supabaseBrowser } from "@/lib/supabase-client";
@@ -476,27 +477,32 @@ export function LocationPanel({
         </div>
       )}
 
-      {zoomSrc && (
-        <div
-          onClick={() => setZoomSrc(null)}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={zoomSrc}
-            alt="확대된 사진"
-            className="max-h-full max-w-full object-contain"
-          />
-          {/* 우상단은 실기기에서 노치/브라우저 상단 UI에 가려 안 보이는 경우가 있어
-              하단 중앙으로 옮김 — 어차피 사진/배경 아무 곳이나 탭해도 닫힌다. */}
-          <button
+      {zoomSrc &&
+        createPortal(
+          // 패널 자체가 overflow-y-auto 스크롤 컨테이너라, 그 안에 fixed 오버레이를
+          // 두면 실기기 사파리에서 화면 전체가 아니라 그 스크롤 영역 안에서만
+          // "고정"되는 문제가 있었다 — body로 포탈을 띄워서 완전히 분리한다.
+          <div
             onClick={() => setZoomSrc(null)}
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-bold text-ink shadow"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4"
           >
-            닫기
-          </button>
-        </div>
-      )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={zoomSrc}
+              alt="확대된 사진"
+              className="max-h-full max-w-full object-contain"
+            />
+            {/* 우상단은 실기기에서 노치/브라우저 상단 UI에 가려 안 보이는 경우가
+                있어 하단 중앙으로 옮김 — 어차피 사진/배경 아무 곳이나 탭해도 닫힌다. */}
+            <button
+              onClick={() => setZoomSrc(null)}
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-bold text-ink shadow"
+            >
+              닫기
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
