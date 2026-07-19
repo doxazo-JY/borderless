@@ -182,6 +182,11 @@ export function MapScreen({
 
           {selectedLocation && (
             <LocationPanel
+              // 마커를 닫지 않고 바로 다른 위치로 옮겨 클릭하면 selectedId만 바뀌고
+              // 컴포넌트는 재사용돼서, 이전 위치에서 골라둔 사진/영상 파일 같은 내부
+              // state(useState)가 그대로 남아있는 문제가 있었다 — key로 위치가 바뀔
+              // 때마다 완전히 새로 마운트되게 강제한다.
+              key={selectedLocation.id}
               location={selectedLocation}
               isCurrentRegion={selectedLocation.regionId === targetRegionId}
               targetRegionName={targetRegionName}

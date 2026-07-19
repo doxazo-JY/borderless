@@ -197,7 +197,6 @@ export function LocationForm({
           type="file"
           name="referencePhoto"
           accept="image/*"
-          capture="environment"
           onChange={(e) => {
             const f = e.target.files?.[0];
             setPhotoPreview(f ? URL.createObjectURL(f) : null);

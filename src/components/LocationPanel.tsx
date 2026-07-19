@@ -367,7 +367,6 @@ export function LocationPanel({
                     <input
                       type="file"
                       accept="video/*"
-                      capture="environment"
                       className="hidden"
                       onChange={(e) =>
                         setVideoFile(e.target.files?.[0] ?? null)
@@ -447,7 +446,6 @@ export function LocationPanel({
               <input
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="hidden"
                 onChange={handleFileChange}
               />

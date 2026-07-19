@@ -2,9 +2,11 @@
 
 export function ConfirmDeleteButton({
   confirmText,
+  label = "삭제",
   className = "text-xs text-red-500 underline",
 }: {
   confirmText: string;
+  label?: string;
   className?: string;
 }) {
   return (
@@ -15,7 +17,7 @@ export function ConfirmDeleteButton({
       }}
       className={className}
     >
-      삭제
+      {label}
     </button>
   );
 }

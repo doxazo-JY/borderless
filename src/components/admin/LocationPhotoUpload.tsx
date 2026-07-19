@@ -29,7 +29,6 @@ export function LocationPhotoUpload({
           type="file"
           name="referencePhoto"
           accept="image/*"
-          capture="environment"
           disabled={uploading}
           className="hidden"
           onChange={() => formRef.current?.requestSubmit()}

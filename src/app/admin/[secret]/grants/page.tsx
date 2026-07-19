@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { confirmGrant } from "./actions";
+import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
+import { confirmGrant, resetSubmission } from "./actions";
 
 export default async function GrantsPage({
   params,
@@ -63,13 +64,23 @@ export default async function GrantsPage({
                   영상: {s.videoUrl ? "제출됨" : "미제출"}
                 </p>
               </div>
-              <form action={confirmGrant}>
-                <input type="hidden" name="id" value={s.id} />
-                <input type="hidden" name="secret" value={secret} />
-                <button className="rounded bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white">
-                  지급 확정
-                </button>
-              </form>
+              <div className="flex flex-col items-end gap-1">
+                <form action={confirmGrant}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <input type="hidden" name="secret" value={secret} />
+                  <button className="rounded bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white">
+                    지급 확정
+                  </button>
+                </form>
+                <form action={resetSubmission}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <input type="hidden" name="secret" value={secret} />
+                  <ConfirmDeleteButton
+                    label="초기화"
+                    confirmText={`${s.group.displayName}의 "${s.location.region.name}지역 · ${s.location.name}" 제출(사진${s.videoUrl ? "/영상" : ""})을 초기화할까요?\n캡이 되돌아가서 다시 시도할 수 있게 됩니다.`}
+                  />
+                </form>
+              </div>
             </li>
           ))}
         </ul>
@@ -77,11 +88,24 @@ export default async function GrantsPage({
 
       <section>
         <h2 className="mb-2 text-sm font-bold text-zinc-500">최근 지급 완료</h2>
-        <ul className="space-y-1">
+        <ul className="space-y-2">
           {confirmed.map((s) => (
-            <li key={s.id} className="text-xs text-zinc-400">
-              {s.group.displayName} · {s.location.region.name}지역 ·{" "}
-              {s.location.name}
+            <li
+              key={s.id}
+              className="flex items-center justify-between rounded border border-zinc-200 p-2"
+            >
+              <span className="text-xs text-zinc-500">
+                {s.group.displayName} · {s.location.region.name}지역 ·{" "}
+                {s.location.name}
+              </span>
+              <form action={resetSubmission}>
+                <input type="hidden" name="id" value={s.id} />
+                <input type="hidden" name="secret" value={secret} />
+                <ConfirmDeleteButton
+                  label="초기화"
+                  confirmText={`${s.group.displayName}의 "${s.location.region.name}지역 · ${s.location.name}" 제출을 초기화할까요?\n지급 확정 기록도 함께 사라지고, 캡이 되돌아가서 다시 시도할 수 있게 됩니다.`}
+                />
+              </form>
             </li>
           ))}
         </ul>

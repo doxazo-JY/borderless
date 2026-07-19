@@ -32,7 +32,9 @@ async function main() {
     BUCKET,
     {
       public: true,
-      fileSizeLimit: "20MB",
+      // 미션 영상(10~20초)이 폰 화질에 따라 20MB를 쉽게 넘어서 업로드가 막힌 적
+      // 있음 — 지금 Supabase 요금제에서 허용하는 최대치(50MB)로 맞춰둔다.
+      fileSizeLimit: "50MB",
     },
   );
   if (createError) throw createError;
