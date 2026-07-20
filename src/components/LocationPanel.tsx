@@ -245,7 +245,7 @@ export function LocationPanel({
 
   return (
     <div
-      className={`relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line bg-paper-panel px-4 pt-4 pb-4 text-ink ${isRoomy ? "min-h-[45dvh]" : ""}`}
+      className={`relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line bg-paper-panel px-4 pt-4 pb-4 text-ink lg:h-full lg:max-h-none lg:w-[40%] lg:shrink-0 lg:border-t-0 lg:border-l ${isRoomy ? "min-h-[45dvh] lg:min-h-0" : ""}`}
     >
       <div className="mb-3 flex items-start justify-between">
         <div>
@@ -317,10 +317,10 @@ export function LocationPanel({
                       src={location.referencePhotoUrl}
                       alt="기준 사진"
                       onZoom={setZoomSrc}
-                      className="h-44 w-full rounded-md border border-line object-contain bg-paper"
+                      className="h-44 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
                     />
                   ) : (
-                    <div className="flex h-44 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                    <div className="flex h-44 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                       미등록
                     </div>
                   )}
@@ -334,10 +334,10 @@ export function LocationPanel({
                       src={result.photoUrl}
                       alt="내가 제출한 사진"
                       onZoom={setZoomSrc}
-                      className="h-44 w-full rounded-md border border-line object-contain bg-paper"
+                      className="h-44 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
                     />
                   ) : (
-                    <div className="flex h-44 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                    <div className="flex h-44 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                       기록 없음
                     </div>
                   )}
@@ -419,10 +419,10 @@ export function LocationPanel({
                   src={location.referencePhotoUrl}
                   alt="기준 사진"
                   onZoom={setZoomSrc}
-                  className="h-44 w-full rounded-md border border-line object-contain bg-paper"
+                  className="h-44 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
                 />
               ) : (
-                <div className="flex h-44 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                <div className="flex h-44 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                   기준 사진 미등록 (더미 데이터)
                 </div>
               )}
@@ -437,10 +437,10 @@ export function LocationPanel({
                   src={previewUrl ?? result!.photoUrl!}
                   alt="업로드할 사진"
                   onZoom={setZoomSrc}
-                  className="h-44 w-full rounded-md border border-line object-contain bg-paper"
+                  className="h-44 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
                 />
               ) : (
-                <div className="flex h-44 w-full items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                <div className="flex h-44 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                   아직 없음
                 </div>
               )}

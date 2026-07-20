@@ -86,6 +86,8 @@ export function KakaoMap({
   }, [onSelectLocation]);
   // 개발 모드 StrictMode가 effect를 두 번 실행해도 지도가 중복 생성되지 않도록 가드
   const mapCreatedRef = useRef(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapInstanceRef = useRef<any>(null);
   // 통과/마감 상태가 바뀔 때마다 지도(및 마커) 전체를 새로 만들지 않고, 이미 만들어둔
   // 마커 DOM만 찾아서 색을 갱신하기 위한 위치별 참조
   const pinElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -155,6 +157,7 @@ export function KakaoMap({
           center,
           level: 6,
         });
+        mapInstanceRef.current = map;
 
         // 마커는 시각적 표시용(CustomOverlay)으로만 두고, 클릭 판정은 지도 자체의
         // click 이벤트(가장 기본적이고 안정적인 기능) + 좌표 거리 계산으로 직접 처리한다.
@@ -349,6 +352,18 @@ export function KakaoMap({
       if (pinEl) applyPinStatus(pinEl, loc);
     }
   }, [locations]);
+
+  // 카카오 지도는 컨테이너 크기가 바뀌어도(예: PC 화면에서 옆에 패널이 열리고 닫히며
+  // 지도 폭이 변할 때) 스스로 다시 그리지 않아 빈 회색 영역이 생긴다 —
+  // ResizeObserver로 감지해서 relayout()을 호출해준다.
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(() => {
+      mapInstanceRef.current?.relayout();
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="relative h-full w-full">

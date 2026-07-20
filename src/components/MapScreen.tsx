@@ -176,7 +176,7 @@ export function MapScreen({
       </div>
 
       <div className="relative min-h-0 flex-1 p-2">
-        <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-panel shadow-[0_2px_6px_rgba(20,18,12,0.05)]">
+        <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-panel shadow-[0_2px_6px_rgba(20,18,12,0.05)] lg:flex-row">
           <div className="relative min-h-0 flex-1">
             <KakaoMap
               locations={locations.map((loc) => {
@@ -192,7 +192,7 @@ export function MapScreen({
             />
           </div>
 
-          {selectedLocation && (
+          {selectedLocation ? (
             <LocationPanel
               // 마커를 닫지 않고 바로 다른 위치로 옮겨 클릭하면 selectedId만 바뀌고
               // 컴포넌트는 재사용돼서, 이전 위치에서 골라둔 사진/영상 파일 같은 내부
@@ -220,6 +220,15 @@ export function MapScreen({
                 setSteps((prev) => ({ ...prev, [selectedLocation.id]: step }))
               }
             />
+          ) : (
+            // 모바일에서는 선택 전엔 지도만 꽉 채우고(기존 동작 유지), PC 화면에서만
+            // 우측에 빈 패널을 미리 보여줘서 "지도 왼쪽 · 패널 오른쪽" 2단 구성이
+            // 마커를 클릭하기 전부터 자리 잡혀 보이게 한다.
+            <div className="hidden shrink-0 flex-col items-center justify-center border-l border-line bg-paper-panel px-6 text-center text-sm text-muted lg:flex lg:h-full lg:w-[40%]">
+              지도에서 포인트를 선택하면
+              <br />
+              여기에 상세 정보가 표시돼요.
+            </div>
           )}
         </div>
 
