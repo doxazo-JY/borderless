@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     where: { id: locationId },
     include: { region: true, mission: true },
   });
-  if (!location) {
+  if (!location || !location.isActive) {
     return NextResponse.json({ result: "not_found" }, { status: 404 });
   }
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     where: {
       groupId: group.id,
       aiPassed: true,
-      location: { regionId: location.regionId },
+      location: { regionId: location.regionId, isActive: true },
     },
     include: { location: true },
   });

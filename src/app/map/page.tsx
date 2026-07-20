@@ -15,6 +15,7 @@ export default async function MapPage() {
   }
 
   const locations = await prisma.location.findMany({
+    where: { isActive: true },
     include: { region: true },
     orderBy: [{ region: { name: "asc" } }, { name: "asc" }],
   });
@@ -24,13 +25,13 @@ export default async function MapPage() {
       getGroupRegionProgress(group.id),
       getTeamClosedLocationIds(group.teamId),
       prisma.submission.findMany({
-        where: { groupId: group.id, aiPassed: true },
+        where: { groupId: group.id, aiPassed: true, location: { isActive: true } },
         include: { location: { include: { mission: true } } },
       }),
       // 실패 사유도 새로고침 후 계속 보이게 하려면 서버에서 같이 내려줘야 한다 —
       // 통과 여부와 달리 실패는 클라이언트 state에만 있어서 새로고침하면 사라졌음.
       prisma.submission.findMany({
-        where: { groupId: group.id, aiPassed: false },
+        where: { groupId: group.id, aiPassed: false, location: { isActive: true } },
         orderBy: { createdAt: "desc" },
       }),
       getAppSettings(),

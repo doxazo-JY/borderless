@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createLocation } from "@/app/admin/[secret]/setup/actions";
 import { loadKakaoServices } from "@/lib/kakao-loader";
 import {
@@ -23,6 +23,7 @@ export function LocationForm({
   ingredients: Option[];
   existingLocations?: ExistingMapLocation[];
 }) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [address, setAddress] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
@@ -33,6 +34,17 @@ export function LocationForm({
     "idle" | "loading" | "error"
   >("idle");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  async function createAndReset(formData: FormData) {
+    await createLocation(formData);
+    formRef.current?.reset();
+    setAddress("");
+    setLat("");
+    setLng("");
+    setGpsStatus("idle");
+    setAddressStatus("idle");
+    setPhotoPreview(null);
+  }
 
   function useMyLocation() {
     if (!navigator.geolocation) {
@@ -78,7 +90,8 @@ export function LocationForm({
 
   return (
     <form
-      action={createLocation}
+      ref={formRef}
+      action={createAndReset}
       className="space-y-3 rounded-lg border border-zinc-200 p-4"
     >
       <h3 className="text-sm font-bold">새 포인트 추가</h3>

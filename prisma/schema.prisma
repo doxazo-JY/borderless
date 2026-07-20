@@ -97,6 +97,7 @@ model Location {
   regionId          String
   region            Region        @relation(fields: [regionId], references: [id])
   name              String
+  isActive          Boolean       @default(true)
   address           String? // 보조 입력 수단 (사전 계획용). 현장에서는 GPS로 lat/lng 직접 입력이 메인
   lat               Float
   lng               Float

@@ -23,6 +23,7 @@ declare global {
 
 const SCRIPT_ID = "kakao-maps-sdk";
 const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+const COMPASS_PREFERENCE_KEY = "borderless-compass-enabled";
 
 function applyPinStatus(pinEl: HTMLDivElement, loc: MapLocation) {
   const statusSuffix = loc.isVideoDone
@@ -91,6 +92,7 @@ export function KakaoMap({
   // 내 위치 마커의 방향(나침반) 부채꼴 — DOM을 직접 회전시켜야 해서 ref로 들고 있는다
   const compassConeRef = useRef<HTMLDivElement | null>(null);
   const compassAttachedRef = useRef(false);
+  const headingReceivedRef = useRef(false);
 
   function attachCompass() {
     if (compassAttachedRef.current) return;
@@ -99,7 +101,9 @@ export function KakaoMap({
     function handleOrientation(event: Event) {
       const heading = getHeadingFromEvent(event);
       if (heading !== null && compassConeRef.current) {
+        headingReceivedRef.current = true;
         compassConeRef.current.style.transform = `rotate(${heading}deg)`;
+        setNeedsCompassPermission(false);
       }
     }
 
@@ -111,6 +115,7 @@ export function KakaoMap({
   }
 
   function requestCompassPermission() {
+    window.localStorage.setItem(COMPASS_PREFERENCE_KEY, "true");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const DOE = (window as any).DeviceOrientationEvent;
     if (DOE && typeof DOE.requestPermission === "function") {
@@ -122,6 +127,9 @@ export function KakaoMap({
           }
         })
         .catch(() => {});
+    } else {
+      attachCompass();
+      setNeedsCompassPermission(false);
     }
   }
 
@@ -285,8 +293,19 @@ export function KakaoMap({
               // 버튼을 띄우고, 그 외 브라우저는 권한 프롬프트가 없어 바로 붙인다.
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const DOE = (window as any).DeviceOrientationEvent;
+              const compassWasEnabled =
+                window.localStorage.getItem(COMPASS_PREFERENCE_KEY) === "true";
               if (DOE && typeof DOE.requestPermission === "function") {
-                setNeedsCompassPermission(true);
+                if (compassWasEnabled) {
+                  attachCompass();
+                  window.setTimeout(() => {
+                    if (!headingReceivedRef.current) {
+                      setNeedsCompassPermission(true);
+                    }
+                  }, 1200);
+                } else {
+                  setNeedsCompassPermission(true);
+                }
               } else if (typeof DOE !== "undefined") {
                 attachCompass();
               }

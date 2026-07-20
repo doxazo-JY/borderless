@@ -100,6 +100,15 @@ export async function deleteLocation(formData: FormData) {
   refresh();
 }
 
+export async function toggleLocationActive(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const isActive = formData.get("isActive") === "true";
+  if (!id) return;
+
+  await prisma.location.update({ where: { id }, data: { isActive } });
+  refresh();
+}
+
 export async function createMission(formData: FormData) {
   const type = String(formData.get("type") ?? "");
   const content = String(formData.get("content") ?? "").trim();

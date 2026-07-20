@@ -13,6 +13,7 @@ import {
   deleteLocation,
   deleteMission,
   setGroupRegionOrder,
+  toggleLocationActive,
 } from "./actions";
 
 const MISSION_LABEL: Record<string, string> = {
@@ -234,7 +235,7 @@ export default async function AdminSetupPage() {
           {locations.map((loc) => (
             <li
               key={loc.id}
-              className="flex flex-col gap-2 rounded border border-zinc-200 p-2 text-sm"
+              className={`flex flex-col gap-2 rounded border border-zinc-200 p-2 text-sm ${loc.isActive ? "" : "bg-zinc-50 opacity-60"}`}
             >
               <div className="flex gap-2">
                 {loc.referencePhotoUrl ? (
@@ -278,12 +279,28 @@ export default async function AdminSetupPage() {
                   locationId={loc.id}
                   hasPhoto={!!loc.referencePhotoUrl}
                 />
-                <form action={deleteLocation}>
+                <div className="flex items-center gap-2">
+                  <form action={toggleLocationActive}>
+                    <input type="hidden" name="id" value={loc.id} />
+                    <input
+                      type="hidden"
+                      name="isActive"
+                      value={String(!loc.isActive)}
+                    />
+                    <button
+                      type="submit"
+                      className="text-xs font-medium text-zinc-600 underline"
+                    >
+                      {loc.isActive ? "비활성화" : "활성화"}
+                    </button>
+                  </form>
+                  <form action={deleteLocation}>
                   <input type="hidden" name="id" value={loc.id} />
                   <ConfirmDeleteButton
                     confirmText={`"${loc.region.name}지역 · ${loc.name}" 포인트를 삭제하시겠습니까?\n연결된 제출/도움요청 기록도 함께 삭제됩니다.`}
                   />
-                </form>
+                  </form>
+                </div>
               </div>
               <LocationDetailsEditor
                 locationId={loc.id}
@@ -301,7 +318,7 @@ export default async function AdminSetupPage() {
           regions={regions.map((r) => ({ id: r.id, label: r.name }))}
           missions={missionOptions}
           ingredients={ingredientOptions}
-          existingLocations={locations.map((loc) => ({
+          existingLocations={locations.filter((loc) => loc.isActive).map((loc) => ({
             id: loc.id,
             name: loc.name,
             regionName: loc.region.name,
