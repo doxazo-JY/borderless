@@ -2,47 +2,26 @@
 
 import { useState } from "react";
 import { createLocation } from "@/app/admin/[secret]/setup/actions";
+import { loadKakaoServices } from "@/lib/kakao-loader";
+import {
+  LocationMapPicker,
+  type ExistingMapLocation,
+} from "@/components/admin/LocationMapPicker";
 
 type Option = { id: string; label: string };
 
 const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
-const KAKAO_SCRIPT_ID = "kakao-maps-sdk-services";
-
-// 지도 화면(KakaoMap.tsx)과 별개 페이지라 SDK가 아직 안 실려있을 수 있어, 주소 검색
-// 버튼을 처음 누를 때 지오코딩에 필요한 services 라이브러리만 지연 로드한다.
-function loadKakaoServices(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.kakao?.maps?.services) {
-      resolve();
-      return;
-    }
-    const existing = document.getElementById(
-      KAKAO_SCRIPT_ID,
-    ) as HTMLScriptElement | null;
-    if (existing) {
-      existing.addEventListener("load", () =>
-        window.kakao.maps.load(() => resolve()),
-      );
-      return;
-    }
-    const script = document.createElement("script");
-    script.id = KAKAO_SCRIPT_ID;
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false&libraries=services`;
-    script.async = true;
-    script.onload = () => window.kakao.maps.load(() => resolve());
-    script.onerror = () => reject(new Error("Kakao SDK 로드 실패"));
-    document.head.appendChild(script);
-  });
-}
 
 export function LocationForm({
   regions,
   missions,
   ingredients,
+  existingLocations = [],
 }: {
   regions: Option[];
   missions: Option[];
   ingredients: Option[];
+  existingLocations?: ExistingMapLocation[];
 }) {
   const [address, setAddress] = useState("");
   const [lat, setLat] = useState("");
@@ -131,7 +110,7 @@ export function LocationForm({
       </div>
 
       <label className="block text-xs text-zinc-500">
-        주소 (선택 — 입력 후 아래 버튼으로 좌표 변환 가능)
+        주소 (선택 — 검색하면 아래 지도가 그 근처로 이동해요)
         <div className="mt-1 flex gap-2">
           <input
             name="address"
@@ -144,33 +123,49 @@ export function LocationForm({
             onClick={findByAddress}
             className="shrink-0 rounded border border-zinc-300 px-2 py-1 text-xs font-medium"
           >
-            {addressStatus === "loading" ? "찾는 중..." : "주소로 좌표 찾기"}
+            {addressStatus === "loading" ? "찾는 중..." : "주소로 지도 이동"}
           </button>
         </div>
         {addressStatus === "error" && (
           <p className="mt-1 text-xs text-red-600">
-            좌표를 찾지 못했어요. 주소를 다시 확인하거나 아래에서 직접
-            입력/GPS로 채워주세요.
+            좌표를 찾지 못했어요. 주소를 다시 확인하거나 아래 지도를 직접
+            움직여 위치를 찍어주세요.
           </p>
         )}
       </label>
 
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <p className="text-xs text-zinc-500">좌표</p>
+          <p className="text-xs text-zinc-500">
+            지도를 클릭해서 정확한 위치를 찍어주세요 (회색 점 = 이미 등록된
+            포인트)
+          </p>
           <button
             type="button"
             onClick={useMyLocation}
-            className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium"
+            className="shrink-0 rounded border border-zinc-300 px-2 py-1 text-xs font-medium"
           >
-            {gpsStatus === "loading" ? "위치 확인 중..." : "내 위치 사용"}
+            {gpsStatus === "loading" ? "위치 확인 중..." : "내 위치로 이동"}
           </button>
         </div>
         {gpsStatus === "error" && (
           <p className="mb-1 text-xs text-red-600">
-            위치를 가져오지 못했어요. 위/경도를 직접 입력해주세요.
+            위치를 가져오지 못했어요. 아래 지도를 직접 움직여 위치를
+            찍어주세요.
           </p>
         )}
+        <LocationMapPicker
+          lat={lat}
+          lng={lng}
+          onPick={(la, ln) => {
+            setLat(la);
+            setLng(ln);
+          }}
+          existingLocations={existingLocations}
+        />
+        <p className="mt-1 mb-1 text-xs text-zinc-500">
+          찍힌 좌표 (직접 수정도 가능)
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <input
             name="lat"

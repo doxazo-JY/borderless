@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { LocationForm } from "@/components/admin/LocationForm";
 import { LocationPhotoUpload } from "@/components/admin/LocationPhotoUpload";
 import { LocationDetailsEditor } from "@/components/admin/LocationDetailsEditor";
+import { MissionEditor } from "@/components/admin/MissionEditor";
 import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
 import { GroupLockToggle } from "@/components/admin/GroupLockToggle";
 import { getAppSettings } from "@/lib/settings";
@@ -125,20 +126,29 @@ export default async function AdminSetupPage() {
           {missions.map((m) => (
             <li
               key={m.id}
-              className="flex items-center justify-between rounded border border-zinc-200 p-2 text-sm"
+              className="rounded border border-zinc-200 p-2 text-sm"
             >
-              <span>
-                <span className="font-medium">
-                  {MISSION_LABEL[m.type] ?? m.type}
-                </span>{" "}
-                — {m.content || "(자유곡)"}
-              </span>
-              <form action={deleteMission}>
-                <input type="hidden" name="id" value={m.id} />
-                <ConfirmDeleteButton
-                  confirmText={`"${MISSION_LABEL[m.type] ?? m.type} — ${m.content || "자유곡"}" 미션을 삭제하시겠습니까?`}
-                />
-              </form>
+              <div className="flex items-center justify-between">
+                <span>
+                  <span className="font-medium">
+                    {MISSION_LABEL[m.type] ?? m.type}
+                  </span>{" "}
+                  — {m.content || "(자유곡)"}
+                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <MissionEditor
+                    missionId={m.id}
+                    currentType={m.type}
+                    currentContent={m.content}
+                  />
+                  <form action={deleteMission}>
+                    <input type="hidden" name="id" value={m.id} />
+                    <ConfirmDeleteButton
+                      confirmText={`"${MISSION_LABEL[m.type] ?? m.type} — ${m.content || "자유곡"}" 미션을 삭제하시겠습니까?`}
+                    />
+                  </form>
+                </div>
+              </div>
             </li>
           ))}
         </ul>
@@ -291,6 +301,13 @@ export default async function AdminSetupPage() {
           regions={regions.map((r) => ({ id: r.id, label: r.name }))}
           missions={missionOptions}
           ingredients={ingredientOptions}
+          existingLocations={locations.map((loc) => ({
+            id: loc.id,
+            name: loc.name,
+            regionName: loc.region.name,
+            lat: loc.lat,
+            lng: loc.lng,
+          }))}
         />
       </section>
     </main>

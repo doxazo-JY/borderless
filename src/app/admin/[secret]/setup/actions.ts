@@ -119,6 +119,21 @@ export async function deleteMission(formData: FormData) {
   refresh();
 }
 
+export async function updateMission(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const type = String(formData.get("type") ?? "");
+  const content = String(formData.get("content") ?? "").trim();
+  if (!id) return;
+  if (!["WORD", "PRAISE", "PRAYER"].includes(type)) {
+    throw new Error("잘못된 미션 유형입니다.");
+  }
+  await prisma.mission.update({
+    where: { id },
+    data: { type: type as "WORD" | "PRAISE" | "PRAYER", content },
+  });
+  refresh();
+}
+
 export async function createIngredient(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
