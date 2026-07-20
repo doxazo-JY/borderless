@@ -245,7 +245,7 @@ export function MapScreen({
           >
             {targetRegionAwaitingVideo
               ? `${targetRegionName}지역 · 영상 업로드 남음`
-              : `다음 목적지 · ${targetRegionName}지역`}
+              : `현재 목적지 · ${targetRegionName}지역`}
           </div>
         )}
       </div>

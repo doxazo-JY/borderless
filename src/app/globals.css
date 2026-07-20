@@ -30,6 +30,19 @@
   .animate-pass-pulse { animation: none; opacity: 0; }
 }
 
+/* HOLD/CLOSED 카드(차례가 아닌 지역, 마감된 포인트) — PASS 펄스처럼 축하용 모션은
+   아니고, 카드가 살짝 떠오르며 자리 잡는 정도로만 시선을 붙잡는다 */
+@keyframes card-rise-once {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-card-rise {
+  animation: card-rise-once 0.25s ease-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-card-rise { animation: none; }
+}
+
 body {
   background: var(--color-paper);
   color: var(--color-ink);

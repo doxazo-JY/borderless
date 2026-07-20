@@ -52,6 +52,36 @@ function ZoomableImage({
   );
 }
 
+// "차례가 아님"/"마감" 등 진행을 막는 안내를 평범한 문단으로 두면 잘 안 읽혀서,
+// PASS 카드와 같은 카드 골격(헤어라인 테두리 + 점선 헤더 구분선)을 그대로 써서
+// 정보로서 눈에 띄게 하되, 오렌지 펄스 같은 축하용 모션은 쓰지 않는다 — 그건
+// PASS 전용으로 아껴둬야 "통과했을 때"의 임팩트가 유지된다.
+function HoldCard({
+  headerLabel,
+  headerRight,
+  message,
+}: {
+  headerLabel: string;
+  headerRight: string;
+  message: string;
+}) {
+  return (
+    <div className="animate-card-rise overflow-hidden rounded-lg border border-accent bg-paper-panel shadow-[0_10px_26px_-14px_rgba(20,18,12,0.35)]">
+      <div className="flex items-center justify-between border-b border-dashed border-line px-3 py-2">
+        <span className="text-sm font-extrabold tracking-wide text-accent">
+          {headerLabel}
+        </span>
+        <span className="label-tech text-[10px] text-muted">
+          {headerRight}
+        </span>
+      </div>
+      <div className="p-3">
+        <p className="text-sm leading-snug text-ink">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 function PassCard({
   location,
   mission,
@@ -387,16 +417,27 @@ export function LocationPanel({
           )}
         </div>
       ) : !isCurrentRegion ? (
-        <p className="text-sm text-ink">
-          {targetRegionName &&
-            (targetRegionAwaitingVideo
-              ? `${targetRegionName}지역에서 아직 미션 영상 업로드가 안 끝났어요. 그것부터 마쳐주세요.`
-              : `아직 이 지역으로 갈 차례가 아니에요. 다음 목적지는 ${targetRegionName}지역입니다.`)}
-        </p>
+        targetRegionName && (
+          <HoldCard
+            headerLabel="LOCKED"
+            headerRight={
+              targetRegionAwaitingVideo
+                ? `${targetRegionName}지역 · 영상 대기`
+                : `현재 · ${targetRegionName}지역`
+            }
+            message={
+              targetRegionAwaitingVideo
+                ? `${targetRegionName}지역 미션 영상 업로드 필요`
+                : `${targetRegionName}지역부터 먼저 완료`
+            }
+          />
+        )
       ) : location.isClosed ? (
-        <p className="text-sm text-ink">
-          이미 마감된 포인트예요. 같은 지역의 다른 포인트로 가보세요.
-        </p>
+        <HoldCard
+          headerLabel="CLOSED"
+          headerRight={`${location.regionName}지역`}
+          message="정원 마감 · 같은 지역의 다른 포인트 이용"
+        />
       ) : result?.result === "closed" ? (
         <p className="text-sm text-ink">{result.message}</p>
       ) : result?.result === "wrong_region" ? (
