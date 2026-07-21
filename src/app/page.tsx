@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { TeamGroupSelect } from "@/components/TeamGroupSelect";
+import { selectGroup } from "@/app/actions";
 import { getCurrentGroup } from "@/lib/group";
 import { getAppSettings } from "@/lib/settings";
+import { teamColor } from "@/lib/team-colors";
 
 export default async function Home() {
   const [group, settings] = await Promise.all([
@@ -30,7 +31,36 @@ export default async function Home() {
         <p className="mt-2 text-sm text-muted">소속된 팀과 조를 선택하세요</p>
       </div>
 
-      <TeamGroupSelect teams={teams} />
+      <div className="grid w-full max-w-sm gap-6">
+        {teams.map((team) => (
+          <div key={team.id}>
+            <h2
+              className="label-tech mb-2 text-xs font-bold"
+              style={{ color: teamColor(team.name) }}
+            >
+              {team.name}팀
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              {team.groups.map((g) => (
+                <form key={g.id} action={selectGroup}>
+                  <input type="hidden" name="groupId" value={g.id} />
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg border-2 py-4 text-lg font-bold transition-colors"
+                    style={{
+                      borderColor: teamColor(team.name),
+                      color: "var(--color-ink)",
+                      background: "var(--color-paper-panel)",
+                    }}
+                  >
+                    {g.displayName}
+                  </button>
+                </form>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </main>
   );
 }

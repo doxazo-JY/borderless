@@ -15,6 +15,7 @@ import {
   deleteMission,
   setGroupRegionOrder,
   toggleLocationActive,
+  updateGroupMembers,
 } from "./actions";
 
 const MISSION_LABEL: Record<string, string> = {
@@ -71,12 +72,40 @@ export default async function AdminSetupPage() {
         <p className="text-sm">{regions.map((r) => r.name).join(", ")}</p>
       </section>
 
-      {/* 팀/조 (읽기 전용) */}
+      {/* 팀/조 + 조원 이름 (참가자가 입력 안 해도 되도록 어드민이 미리 등록) */}
       <section>
         <h2 className="mb-2 text-sm font-bold text-zinc-500">팀 / 조</h2>
-        <ul className="mb-3 grid grid-cols-2 gap-1 text-sm sm:grid-cols-4">
+        <ul className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {teams.flatMap((t) =>
-            t.groups.map((g) => <li key={g.id}>{g.displayName}</li>),
+            t.groups.map((g) => (
+              <li
+                key={g.id}
+                className="rounded border border-zinc-200 p-2 text-sm"
+              >
+                <p className="mb-1 font-semibold">{g.displayName}</p>
+                <form
+                  action={updateGroupMembers}
+                  className="flex flex-col gap-1"
+                >
+                  <input type="hidden" name="id" value={g.id} />
+                  <input
+                    name="memberName1"
+                    defaultValue={g.memberName1 ?? ""}
+                    placeholder="조원1 이름"
+                    className="rounded border border-zinc-300 p-1 text-xs"
+                  />
+                  <input
+                    name="memberName2"
+                    defaultValue={g.memberName2 ?? ""}
+                    placeholder="조원2 이름"
+                    className="rounded border border-zinc-300 p-1 text-xs"
+                  />
+                  <button className="mt-1 self-start rounded bg-zinc-900 px-2 py-1 text-[10px] text-white">
+                    저장
+                  </button>
+                </form>
+              </li>
+            )),
           )}
         </ul>
         <GroupLockToggle locked={settings.groupSelectionLocked} />

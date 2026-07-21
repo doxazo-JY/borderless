@@ -57,6 +57,8 @@ model Group {
   team         Team               @relation(fields: [teamId], references: [id])
   groupNumber  Int // 1 or 2
   displayName  String
+  memberName1  String? // 어드민이 미리 등록 — 참가자가 매번 입력할 필요 없게
+  memberName2  String?
   regionOrder  GroupRegionOrder[]
   submissions  Submission[]
   helpRequests HelpRequest[]
