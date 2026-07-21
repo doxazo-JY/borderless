@@ -463,7 +463,7 @@ export function LocationPanel({
               ) : (
                 <>
                   <p className="label-tech text-[10px] text-muted">
-                    미션 수행 영상 (10~20초)
+                    미션 수행 영상 (30초 이상)
                   </p>
                   {result.videoUrl ? (
                     <video
