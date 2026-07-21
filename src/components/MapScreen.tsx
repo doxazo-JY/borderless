@@ -192,6 +192,13 @@ export function MapScreen({
               locations={locations.map((loc) => {
                 const passed = results[loc.id]?.result === "passed";
                 const r = results[loc.id];
+                // 본인이 통과한 포인트이거나, 아직 아무도 통과 안 한 "지금 차례" 지역의
+                // 포인트만 실제로 의미 있다 — 나머지(차례 아닌 지역, 이미 다른 포인트로
+                // 채워진 지역의 남은 포인트)는 흐리게 표시해서 눈에 덜 띄게 한다.
+                const isRelevant =
+                  passed ||
+                  (!loc.regionCompletedElsewhere &&
+                    loc.regionId === targetRegionId);
                 return {
                   ...loc,
                   isPassed: passed,
@@ -201,6 +208,7 @@ export function MapScreen({
                       ? !!r?.answerCorrect
                       : !!r?.videoUrl),
                   isClosed: loc.isClosed,
+                  isRelevant,
                 };
               })}
               onSelectLocation={(id) => setSelectedId(id)}

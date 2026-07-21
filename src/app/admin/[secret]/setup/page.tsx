@@ -62,7 +62,7 @@ export default async function AdminSetupPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-7xl space-y-8 p-4">
+    <main className="mx-auto max-w-[1600px] space-y-8 p-4">
       <h1 className="text-xl font-bold">어드민 설정</h1>
 
       {/* 지역 (읽기 전용) */}
@@ -133,9 +133,9 @@ export default async function AdminSetupPage() {
           {missions.map((m) => (
             <li
               key={m.id}
-              className="min-w-0 rounded border border-zinc-200 p-2 text-sm"
+              className="flex min-w-0 flex-col gap-2 rounded border border-zinc-200 p-2 text-sm"
             >
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
                 {m.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -144,13 +144,15 @@ export default async function AdminSetupPage() {
                     className="h-10 w-10 shrink-0 rounded object-cover"
                   />
                 )}
-                <span className="min-w-0 flex-1 break-words">
+                <span className="min-w-0 flex-1 break-keep">
                   <span className="font-medium">
                     {MISSION_LABEL[m.type] ?? m.type}
                   </span>{" "}
                   — {m.content || "(자유곡)"}
                   {m.type === "PUZZLE" && m.answer ? ` · 정답: ${m.answer}` : ""}
                 </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-1.5">
                 <MissionEditor
                   missionId={m.id}
                   currentType={m.type}
@@ -241,7 +243,7 @@ export default async function AdminSetupPage() {
         <h2 className="mb-2 text-sm font-bold text-zinc-500">
           방문포인트 ({locations.length}개)
         </h2>
-        <ul className="mb-3 grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-2">
+        <ul className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {locations.map((loc) => (
             <li
               key={loc.id}
@@ -261,7 +263,7 @@ export default async function AdminSetupPage() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="truncate font-medium">
+                  <p className="break-keep font-medium">
                     {loc.region.name}지역 · {loc.name}
                   </p>
                   <p className="text-xs text-zinc-500">
@@ -271,7 +273,7 @@ export default async function AdminSetupPage() {
                     캡 {loc.claimedCount}/{loc.capacity} ·{" "}
                     {loc.mission ? MISSION_LABEL[loc.mission.type] : "미션 없음"}
                   </p>
-                  <p className="truncate text-xs text-zinc-500">
+                  <p className="break-keep text-xs text-zinc-500">
                     재료:{" "}
                     {loc.ingredients.length > 0
                       ? loc.ingredients.map((ing) => ing.name).join(", ")

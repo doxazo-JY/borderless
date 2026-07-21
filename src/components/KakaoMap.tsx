@@ -11,6 +11,9 @@ export type MapLocation = {
   isPassed?: boolean; // 사진 판정 통과
   isMissionDone?: boolean; // 미션 완료(영상 업로드 또는 PUZZLE 정답 제출)까지 끝남
   isClosed?: boolean;
+  // 지금 차례인 지역의 미시도 포인트이거나 본인이 통과한 포인트 — 그 외(아직 차례
+  // 아닌 지역, 이미 다른 포인트에서 통과해버린 지역의 나머지 포인트)는 흐리게 표시
+  isRelevant?: boolean;
 };
 
 declare global {
@@ -70,7 +73,14 @@ function applyPinStatus(
         ? "#9ca3af"
         : "#2563eb";
   pinEl.style.background = isSelected ? darken(baseColor, 25) : baseColor;
-  pinEl.style.opacity = loc.isClosed && !loc.isPassed ? "0.75" : "1";
+  // 차례가 아닌 지역/이미 다른 포인트에서 통과해버린 지역의 나머지 포인트는 흐리게
+  // 눌러서, 지금 실제로 갈 수 있는 포인트가 상대적으로 도드라져 보이게 한다.
+  pinEl.style.opacity =
+    loc.isRelevant === false
+      ? "0.35"
+      : loc.isClosed && !loc.isPassed
+        ? "0.75"
+        : "1";
   // 선택된 마커는 겹친 것들 사이에서도 뭘 골랐는지 바로 보이도록 살짝 확대한다.
   pinEl.style.width = isSelected ? "30px" : "24px";
   pinEl.style.height = isSelected ? "30px" : "24px";

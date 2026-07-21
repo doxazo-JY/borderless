@@ -23,7 +23,7 @@ export default async function HelpRequestsPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 p-4">
+    <main className="mx-auto max-w-[1600px] space-y-6 p-4">
       <h1 className="text-xl font-bold">도움 요청</h1>
 
       <section>

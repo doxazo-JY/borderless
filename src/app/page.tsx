@@ -1,7 +1,20 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { TeamGroupSelect } from "@/components/TeamGroupSelect";
+import { getCurrentGroup } from "@/lib/group";
+import { getAppSettings } from "@/lib/settings";
 
 export default async function Home() {
+  const [group, settings] = await Promise.all([
+    getCurrentGroup(),
+    getAppSettings(),
+  ]);
+  // 팀 선택이 잠긴 뒤에는 이미 소속을 고른 기기가 실수로(뒤로가기 등) 이 화면으로
+  // 돌아와도 다시 지도로 보낸다 — 잠긴 상태에서 이 화면에 머물 이유가 없음.
+  if (group && settings.groupSelectionLocked) {
+    redirect("/map");
+  }
+
   const teams = await prisma.team.findMany({
     orderBy: { name: "asc" },
     include: { groups: { orderBy: { groupNumber: "asc" } } },

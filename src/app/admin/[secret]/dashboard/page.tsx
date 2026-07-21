@@ -41,7 +41,7 @@ export default async function DashboardPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-7xl space-y-8 p-4">
+    <main className="mx-auto max-w-[1600px] space-y-8 p-4">
       <h1 className="text-xl font-bold">대시보드</h1>
       <p className="text-xs text-zinc-500">
         임원 전용 — 참가자에게는 절대 노출되지 않습니다.
@@ -89,7 +89,7 @@ export default async function DashboardPage({
             />
           </form>
         </div>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {locations.map((loc) => (
             <div
               key={loc.id}
