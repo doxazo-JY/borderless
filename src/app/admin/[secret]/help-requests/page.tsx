@@ -33,22 +33,30 @@ export default async function HelpRequestsPage({
         {open.length === 0 && (
           <p className="text-sm text-zinc-400">열려있는 요청이 없어요.</p>
         )}
-        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-3">
           {open.map((hr) => (
             <li
               key={hr.id}
-              className="flex items-center justify-between gap-2 rounded border border-red-200 bg-red-50 p-3"
+              className="flex flex-col gap-3 rounded border border-red-200 bg-red-50 p-4"
             >
               <div className="text-sm">
-                <p className="font-semibold">{hr.group.displayName}</p>
+                <p className="font-semibold">
+                  {hr.group.displayName}
+                  {hr.requesterName ? ` · ${hr.requesterName}` : ""}
+                </p>
                 <p className="text-xs text-zinc-500">
                   {hr.location
                     ? `${hr.location.region.name}지역 · ${hr.location.name}`
                     : "장소 지정 없음"}{" "}
                   · {new Date(hr.createdAt).toLocaleTimeString("ko-KR")}
                 </p>
+                {hr.message && (
+                  <p className="mt-2 rounded border border-red-100 bg-white p-3 text-base leading-snug text-zinc-800">
+                    {hr.message}
+                  </p>
+                )}
               </div>
-              <form action={resolveHelpRequest}>
+              <form action={resolveHelpRequest} className="self-end">
                 <input type="hidden" name="id" value={hr.id} />
                 <input type="hidden" name="secret" value={secret} />
                 <button className="rounded bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white">
@@ -67,10 +75,12 @@ export default async function HelpRequestsPage({
         <ul className="space-y-1">
           {resolved.map((hr) => (
             <li key={hr.id} className="text-xs text-zinc-400">
-              {hr.group.displayName} ·{" "}
+              {hr.group.displayName}
+              {hr.requesterName ? ` · ${hr.requesterName}` : ""} ·{" "}
               {hr.location
                 ? `${hr.location.region.name}지역 · ${hr.location.name}`
                 : "장소 지정 없음"}
+              {hr.message ? ` · "${hr.message}"` : ""}
             </li>
           ))}
         </ul>

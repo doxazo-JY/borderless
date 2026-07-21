@@ -85,11 +85,11 @@ export default async function DashboardPage({
             <ConfirmDeleteButton
               label="전체 초기화"
               className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-600"
-              confirmText="모든 그룹의 모든 제출(사진/영상/정답/지급 확정 기록)을 전부 지우고 포인트 캡도 전부 되돌릴까요?\n답사/리허설 데이터를 한 번에 정리할 때만 쓰세요 — 되돌릴 수 없습니다."
+              confirmText="모든 그룹의 모든 제출(사진/영상/정답/지급 확정 기록)과 도움 요청 기록을 전부 지우고 포인트 캡도 전부 되돌릴까요?\n답사/리허설 데이터를 한 번에 정리할 때만 쓰세요 — 되돌릴 수 없습니다. (참가자 이름은 각자 기기 쿠키에 있어서 여기선 안 지워집니다 — 테스트에 쓴 기기는 지도 화면의 '그룹 변경'으로 따로 초기화하세요.)"
             />
           </form>
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-2">
           {locations.map((loc) => (
             <div
               key={loc.id}

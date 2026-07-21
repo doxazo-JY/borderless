@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { GROUP_COOKIE } from "@/lib/group";
+import { GROUP_COOKIE, PARTICIPANT_NAME_COOKIE } from "@/lib/group";
 import { getAppSettings } from "@/lib/settings";
 
 export async function selectGroup(formData: FormData) {
@@ -11,6 +11,12 @@ export async function selectGroup(formData: FormData) {
   if (typeof groupId !== "string" || !groupId) {
     throw new Error("groupId가 필요합니다");
   }
+  const memberName1 = String(formData.get("memberName1") ?? "").trim();
+  const memberName2 = String(formData.get("memberName2") ?? "").trim();
+  if (!memberName1 || !memberName2) {
+    throw new Error("조원 2명의 이름을 모두 입력해주세요");
+  }
+  const participantName = `${memberName1} · ${memberName2}`;
 
   const group = await prisma.group.findUnique({ where: { id: groupId } });
   if (!group) {
@@ -30,13 +36,15 @@ export async function selectGroup(formData: FormData) {
     }
   }
 
-  cookieStore.set(GROUP_COOKIE, groupId, {
+  const cookieOptions = {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 7, // 7일
-  });
+  };
+  cookieStore.set(GROUP_COOKIE, groupId, cookieOptions);
+  cookieStore.set(PARTICIPANT_NAME_COOKIE, participantName, cookieOptions);
 
   redirect("/map");
 }
@@ -55,5 +63,6 @@ export async function clearGroup() {
   }
 
   cookieStore.delete(GROUP_COOKIE);
+  cookieStore.delete(PARTICIPANT_NAME_COOKIE);
   redirect("/");
 }

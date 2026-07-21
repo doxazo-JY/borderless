@@ -25,6 +25,19 @@ const SCRIPT_ID = "kakao-maps-sdk";
 const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 const COMPASS_PREFERENCE_KEY = "borderless-compass-enabled";
 
+// 범례가 실제 마커(색 원 + 흰 테두리 + 알파벳/기호)와 똑같이 보이도록, 별도 점 대신
+// 실제 마커를 축소한 모양을 그대로 그려서 보여준다.
+function LegendPin({ color, text }: { color: string; text: string }) {
+  return (
+    <span
+      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-white text-[7px] font-bold text-white"
+      style={{ background: color, boxShadow: "0 1px 3px rgba(0,0,0,0.4)" }}
+    >
+      {text}
+    </span>
+  );
+}
+
 // 선택된 마커는 색을 바꾸지 않고, 원래 상태 색을 살짝 어둡게 낮춰서 강조한다
 // (다른 색 링을 두르면 상태 색과 안 어울려 튀어 보였음).
 function darken(hex: string, percent: number): string {
@@ -432,22 +445,22 @@ export function KakaoMap({
           {showLegend && (
             <div className="label-tech absolute right-0 bottom-full mb-1 space-y-1 rounded-md border border-line bg-paper-panel p-2 text-[10px] text-ink shadow-[0_4px_12px_-4px_rgba(20,18,12,0.3)]">
               <div className="whitespace-nowrap text-muted">
-                마커 위 알파벳 = 지역
+                알파벳 = 지역, 뒤 기호 = 진행 상태
               </div>
               <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="h-3 w-3 shrink-0 rounded-full bg-[#2563eb]" />
+                <LegendPin color="#2563eb" text="A" />
                 미시도
               </div>
               <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="h-3 w-3 shrink-0 rounded-full bg-[#e1591c]" />
+                <LegendPin color="#e1591c" text="A▶" />
                 통과 · 완료 대기
               </div>
               <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="h-3 w-3 shrink-0 rounded-full bg-[#16a34a]" />
+                <LegendPin color="#16a34a" text="A✓" />
                 완료
               </div>
               <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="h-3 w-3 shrink-0 rounded-full bg-[#9ca3af]" />
+                <LegendPin color="#9ca3af" text="A✕" />
                 마감
               </div>
             </div>

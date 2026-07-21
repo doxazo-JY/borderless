@@ -38,16 +38,20 @@ export async function resetSubmission(formData: FormData) {
   revalidatePath(`/admin/${secret}/dashboard`);
 }
 
-// 답사/리허설 중 쌓인 테스트 제출을 한 번에 지우기 위한 전체 초기화 — 모든 그룹의
-// 모든 제출 기록을 지우고 포인트별 캡도 전부 0으로 되돌린다. 미션/재료/장소/그룹
-// 같은 설정 데이터는 건드리지 않는다.
+// 답사/리허설 중 쌓인 테스트 제출/도움 요청을 한 번에 지우기 위한 전체 초기화 —
+// 모든 그룹의 제출 기록과 도움 요청(테스트용 이름 포함)을 지우고 포인트별 캡도
+// 전부 0으로 되돌린다. 미션/재료/장소/그룹 같은 설정 데이터는 건드리지 않는다.
+// 참가자 이름은 각 기기 쿠키에만 있어서 여기서 지울 수 없다 — 테스트에 쓴 기기는
+// 지도 화면의 "그룹 변경"으로 각자 따로 초기화해야 한다.
 export async function resetAllSubmissions(formData: FormData) {
   const secret = String(formData.get("secret") ?? "");
 
   await prisma.$transaction([
     prisma.submission.deleteMany({}),
+    prisma.helpRequest.deleteMany({}),
     prisma.location.updateMany({ data: { claimedCount: 0 } }),
   ]);
 
   revalidatePath(`/admin/${secret}/dashboard`);
+  revalidatePath(`/admin/${secret}/help-requests`);
 }

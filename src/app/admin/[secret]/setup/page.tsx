@@ -129,7 +129,7 @@ export default async function AdminSetupPage() {
       {/* 미션 */}
       <section>
         <h2 className="mb-2 text-sm font-bold text-zinc-500">미션</h2>
-        <ul className="mb-3 grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mb-3 grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-1">
           {missions.map((m) => (
             <li
               key={m.id}
@@ -204,7 +204,7 @@ export default async function AdminSetupPage() {
       {/* 재료 */}
       <section>
         <h2 className="mb-2 text-sm font-bold text-zinc-500">재료</h2>
-        <ul className="mb-3 grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mb-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-1">
           {ingredients.map((ing) => (
             <li
               key={ing.id}
@@ -241,7 +241,7 @@ export default async function AdminSetupPage() {
         <h2 className="mb-2 text-sm font-bold text-zinc-500">
           방문포인트 ({locations.length}개)
         </h2>
-        <ul className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <ul className="mb-3 grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-2">
           {locations.map((loc) => (
             <li
               key={loc.id}

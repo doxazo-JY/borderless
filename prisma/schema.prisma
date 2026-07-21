@@ -131,11 +131,13 @@ model Submission {
 }
 
 model HelpRequest {
-  id         String            @id @default(cuid())
-  groupId    String
-  group      Group             @relation(fields: [groupId], references: [id])
-  locationId String? // 특정 장소 맥락 없이도(어떤 화면에서든) 요청 가능하도록 선택값
-  location   Location?         @relation(fields: [locationId], references: [id])
-  status     HelpRequestStatus @default(OPEN)
-  createdAt  DateTime          @default(now())
+  id             String            @id @default(cuid())
+  groupId        String
+  group          Group             @relation(fields: [groupId], references: [id])
+  locationId     String? // 특정 장소 맥락 없이도(어떤 화면에서든) 요청 가능하도록 선택값
+  location       Location?         @relation(fields: [locationId], references: [id])
+  message        String? // 참가자가 적은 문제 설명
+  requesterName  String? // 요청 시점 팀/조 선택 화면에서 입력한 참가자 이름 — 연락할 사람 특정용
+  status         HelpRequestStatus @default(OPEN)
+  createdAt      DateTime          @default(now())
 }
