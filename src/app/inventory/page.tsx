@@ -77,7 +77,6 @@ export default async function InventoryPage() {
                     className="rounded-full border border-line bg-paper px-2 py-1 text-xs"
                   >
                     {ing.name}
-                    {ing.variant ? ` (${ing.variant})` : ""}
                   </li>
                 ))}
               </ul>

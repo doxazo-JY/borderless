@@ -109,15 +109,41 @@ export async function toggleLocationActive(formData: FormData) {
   refresh();
 }
 
+const MISSION_TYPES = ["WORD", "PRAISE", "PRAYER", "PUZZLE"] as const;
+
 export async function createMission(formData: FormData) {
   const type = String(formData.get("type") ?? "");
   const content = String(formData.get("content") ?? "").trim();
-  if (!["WORD", "PRAISE", "PRAYER"].includes(type)) {
+  const answer = String(formData.get("answer") ?? "").trim() || null;
+  if (!MISSION_TYPES.includes(type as (typeof MISSION_TYPES)[number])) {
     throw new Error("잘못된 미션 유형입니다.");
   }
+
+  let imageUrl: string | null = null;
+  const photo = formData.get("photo");
+  if (photo instanceof File && photo.size > 0) {
+    imageUrl = await uploadPhoto(photo, "mission");
+  }
+
   await prisma.mission.create({
-    data: { type: type as "WORD" | "PRAISE" | "PRAYER", content },
+    data: {
+      type: type as (typeof MISSION_TYPES)[number],
+      content,
+      answer,
+      imageUrl,
+    },
   });
+  refresh();
+}
+
+export async function updateMissionPhoto(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const photo = formData.get("photo");
+  if (!id || !(photo instanceof File) || photo.size === 0) return;
+
+  const imageUrl = await uploadPhoto(photo, "mission");
+  await prisma.mission.update({ where: { id }, data: { imageUrl } });
+
   refresh();
 }
 
@@ -132,29 +158,27 @@ export async function updateMission(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const type = String(formData.get("type") ?? "");
   const content = String(formData.get("content") ?? "").trim();
+  const answer = String(formData.get("answer") ?? "").trim() || null;
   if (!id) return;
-  if (!["WORD", "PRAISE", "PRAYER"].includes(type)) {
+  if (!MISSION_TYPES.includes(type as (typeof MISSION_TYPES)[number])) {
     throw new Error("잘못된 미션 유형입니다.");
   }
   await prisma.mission.update({
     where: { id },
-    data: { type: type as "WORD" | "PRAISE" | "PRAYER", content },
+    data: { type: type as (typeof MISSION_TYPES)[number], content, answer },
   });
   refresh();
 }
 
 export async function createIngredient(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
-  const category = String(formData.get("category") ?? "").trim();
-  const variant = String(formData.get("variant") ?? "").trim() || null;
-  const isBase = formData.get("isBase") === "on";
 
-  if (!name || !category) {
-    throw new Error("이름과 분류는 필수입니다.");
+  if (!name) {
+    throw new Error("이름은 필수입니다.");
   }
 
   await prisma.ingredient.create({
-    data: { name, category, variant, isBase },
+    data: { name },
   });
   refresh();
 }

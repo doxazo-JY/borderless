@@ -48,10 +48,15 @@ export default async function MapPage() {
       {
         submissionId: s.id,
         mission: s.location.mission
-          ? { type: s.location.mission.type, content: s.location.mission.content }
+          ? {
+              type: s.location.mission.type,
+              content: s.location.mission.content,
+              imageUrl: s.location.mission.imageUrl,
+            }
           : null,
         photoUrl: s.photoUrl,
         videoUrl: s.videoUrl,
+        answerCorrect: s.answerCorrect,
         aiReason: s.aiReason,
       },
     ]),
@@ -77,14 +82,18 @@ export default async function MapPage() {
   // 이 지역의 나머지 포인트에는 "여기서 이미 통과했다"는 안내만 보여준다.
   const passedByRegionId = new Map<
     string,
-    { locationId: string; locationName: string; videoUploaded: boolean }
+    { locationId: string; locationName: string; completed: boolean }
   >();
   for (const s of passedSubmissions) {
     if (!passedByRegionId.has(s.location.regionId)) {
       passedByRegionId.set(s.location.regionId, {
         locationId: s.locationId,
         locationName: s.location.name,
-        videoUploaded: !!s.videoUrl,
+        // PUZZLE 미션은 영상 업로드가 없으니 정답 제출 여부로 완료를 판단한다.
+        completed:
+          s.location.mission?.type === "PUZZLE"
+            ? s.answerCorrect
+            : !!s.videoUrl,
       });
     }
   }
@@ -106,7 +115,7 @@ export default async function MapPage() {
         regionPassed && regionPassed.locationId !== loc.id
           ? {
               locationName: regionPassed.locationName,
-              videoUploaded: regionPassed.videoUploaded,
+              completed: regionPassed.completed,
             }
           : null,
     };

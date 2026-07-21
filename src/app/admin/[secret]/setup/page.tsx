@@ -3,6 +3,7 @@ import { LocationForm } from "@/components/admin/LocationForm";
 import { LocationPhotoUpload } from "@/components/admin/LocationPhotoUpload";
 import { LocationDetailsEditor } from "@/components/admin/LocationDetailsEditor";
 import { MissionEditor } from "@/components/admin/MissionEditor";
+import { MissionPhotoUpload } from "@/components/admin/MissionPhotoUpload";
 import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
 import { GroupLockToggle } from "@/components/admin/GroupLockToggle";
 import { getAppSettings } from "@/lib/settings";
@@ -20,6 +21,7 @@ const MISSION_LABEL: Record<string, string> = {
   WORD: "말씀",
   PRAISE: "찬양",
   PRAYER: "기도",
+  PUZZLE: "퀴즈",
 };
 
 export default async function AdminSetupPage() {
@@ -28,9 +30,13 @@ export default async function AdminSetupPage() {
       prisma.region.findMany({ orderBy: { name: "asc" } }),
       prisma.location.findMany({
         include: { region: true, mission: true, ingredients: true },
-        orderBy: [{ region: { name: "asc" } }, { name: "asc" }],
+        orderBy: [
+          { isActive: "desc" },
+          { region: { name: "asc" } },
+          { name: "asc" },
+        ],
       }),
-      prisma.mission.findMany(),
+      prisma.mission.findMany({ orderBy: [{ type: "asc" }, { content: "asc" }] }),
       prisma.ingredient.findMany(),
       prisma.team.findMany({
         orderBy: { name: "asc" },
@@ -52,11 +58,11 @@ export default async function AdminSetupPage() {
   }));
   const ingredientOptions = ingredients.map((ing) => ({
     id: ing.id,
-    label: `${ing.name}${ing.variant ? `(${ing.variant})` : ""}`,
+    label: ing.name,
   }));
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 p-4">
+    <main className="mx-auto max-w-7xl space-y-8 p-4">
       <h1 className="text-xl font-bold">어드민 설정</h1>
 
       {/* 지역 (읽기 전용) */}
@@ -81,7 +87,7 @@ export default async function AdminSetupPage() {
         <h2 className="mb-2 text-sm font-bold text-zinc-500">
           그룹별 지역 방문 순서 (강제)
         </h2>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {teams.flatMap((t) =>
             t.groups.map((g) => (
               <form
@@ -127,28 +133,37 @@ export default async function AdminSetupPage() {
           {missions.map((m) => (
             <li
               key={m.id}
-              className="rounded border border-zinc-200 p-2 text-sm"
+              className="min-w-0 rounded border border-zinc-200 p-2 text-sm"
             >
-              <div className="flex items-center justify-between">
-                <span>
+              <div className="flex flex-wrap items-center gap-2">
+                {m.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={m.imageUrl}
+                    alt=""
+                    className="h-10 w-10 shrink-0 rounded object-cover"
+                  />
+                )}
+                <span className="min-w-0 flex-1 break-words">
                   <span className="font-medium">
                     {MISSION_LABEL[m.type] ?? m.type}
                   </span>{" "}
                   — {m.content || "(자유곡)"}
+                  {m.type === "PUZZLE" && m.answer ? ` · 정답: ${m.answer}` : ""}
                 </span>
-                <div className="flex shrink-0 items-center gap-2">
-                  <MissionEditor
-                    missionId={m.id}
-                    currentType={m.type}
-                    currentContent={m.content}
+                <MissionEditor
+                  missionId={m.id}
+                  currentType={m.type}
+                  currentContent={m.content}
+                  currentAnswer={m.answer}
+                />
+                <form action={deleteMission} className="shrink-0">
+                  <input type="hidden" name="id" value={m.id} />
+                  <ConfirmDeleteButton
+                    confirmText={`"${MISSION_LABEL[m.type] ?? m.type} — ${m.content || "자유곡"}" 미션을 삭제하시겠습니까?`}
                   />
-                  <form action={deleteMission}>
-                    <input type="hidden" name="id" value={m.id} />
-                    <ConfirmDeleteButton
-                      confirmText={`"${MISSION_LABEL[m.type] ?? m.type} — ${m.content || "자유곡"}" 미션을 삭제하시겠습니까?`}
-                    />
-                  </form>
-                </div>
+                </form>
+                <MissionPhotoUpload missionId={m.id} hasPhoto={!!m.imageUrl} />
               </div>
             </li>
           ))}
@@ -161,11 +176,24 @@ export default async function AdminSetupPage() {
             <option value="WORD">말씀</option>
             <option value="PRAISE">찬양</option>
             <option value="PRAYER">기도</option>
+            <option value="PUZZLE">퀴즈</option>
           </select>
           <input
             name="content"
-            placeholder="본문/기도 주제 (찬양은 비워둬도 됨)"
+            placeholder="본문/기도 주제/퀴즈 내용 (찬양은 비워둬도 됨)"
             className="flex-1 rounded border border-zinc-300 p-2 text-sm"
+          />
+          <input
+            name="answer"
+            placeholder="정답(퀴즈 전용, 쉼표로 여러 개)"
+            className="flex-1 rounded border border-zinc-300 p-2 text-sm"
+          />
+          <input
+            type="file"
+            name="photo"
+            accept="image/*"
+            title="문제 사진(선택)"
+            className="w-32 text-xs"
           />
           <button className="rounded bg-zinc-900 px-3 py-2 text-sm text-white">
             추가
@@ -182,15 +210,11 @@ export default async function AdminSetupPage() {
               key={ing.id}
               className="flex items-center justify-between rounded border border-zinc-200 p-2 text-sm"
             >
-              <span>
-                {ing.name}
-                {ing.variant ? ` (${ing.variant})` : ""} · {ing.category}
-                {ing.isBase ? " · 기본재료" : ""}
-              </span>
+              <span>{ing.name}</span>
               <form action={deleteIngredient}>
                 <input type="hidden" name="id" value={ing.id} />
                 <ConfirmDeleteButton
-                  confirmText={`"${ing.name}${ing.variant ? ` (${ing.variant})` : ""}" 재료를 삭제하시겠습니까?`}
+                  confirmText={`"${ing.name}" 재료를 삭제하시겠습니까?`}
                 />
               </form>
             </li>
@@ -202,24 +226,10 @@ export default async function AdminSetupPage() {
         >
           <input
             name="name"
-            placeholder="이름"
+            placeholder="이름 (예: 떡(치즈떡))"
             required
             className="rounded border border-zinc-300 p-2 text-sm"
           />
-          <input
-            name="category"
-            placeholder="분류(주재료/채소/양념 등)"
-            required
-            className="rounded border border-zinc-300 p-2 text-sm"
-          />
-          <input
-            name="variant"
-            placeholder="변형(선택, 예: 치즈떡)"
-            className="rounded border border-zinc-300 p-2 text-sm"
-          />
-          <label className="flex items-center gap-1 text-xs">
-            <input type="checkbox" name="isBase" /> 기본재료
-          </label>
           <button className="rounded bg-zinc-900 px-3 py-2 text-sm text-white">
             추가
           </button>
@@ -264,12 +274,7 @@ export default async function AdminSetupPage() {
                   <p className="truncate text-xs text-zinc-500">
                     재료:{" "}
                     {loc.ingredients.length > 0
-                      ? loc.ingredients
-                          .map(
-                            (ing) =>
-                              `${ing.name}${ing.variant ? `(${ing.variant})` : ""}`,
-                          )
-                          .join(", ")
+                      ? loc.ingredients.map((ing) => ing.name).join(", ")
                       : "없음"}
                   </p>
                 </div>

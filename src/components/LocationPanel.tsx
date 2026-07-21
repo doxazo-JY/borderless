@@ -10,15 +10,17 @@ const MISSION_LABEL: Record<string, string> = {
   WORD: "말씀",
   PRAISE: "찬양",
   PRAYER: "기도",
+  PUZZLE: "퀴즈",
 };
 
 export type SubmitResult = {
   result: "wrong_region" | "closed" | "failed" | "passed" | string;
   message?: string;
   submissionId?: string;
-  mission?: { type: string; content: string } | null;
+  mission?: { type: string; content: string; imageUrl: string | null } | null;
   photoUrl?: string | null;
   videoUrl?: string | null;
+  answerCorrect?: boolean;
 };
 
 function passCode(location: MapLocationInfo) {
@@ -89,7 +91,7 @@ function PassCard({
   onPulseEnd,
 }: {
   location: MapLocationInfo;
-  mission?: { type: string; content: string } | null;
+  mission?: { type: string; content: string; imageUrl: string | null } | null;
   showPulse: boolean;
   onPulseEnd: () => void;
 }) {
@@ -118,6 +120,14 @@ function PassCard({
           <p className="label-tech text-[10px] text-accent">
             {MISSION_LABEL[mission?.type ?? ""] ?? mission?.type} 미션
           </p>
+          {mission?.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mission.imageUrl}
+              alt=""
+              className="mt-2 max-h-56 w-full rounded-md border border-line object-contain bg-paper"
+            />
+          )}
           <p className="mt-1 text-base leading-snug font-bold text-ink">
             {mission?.content || "자유곡으로 찬양해주세요."}
           </p>
@@ -131,7 +141,7 @@ export function LocationPanel({
   location,
   isCurrentRegion,
   targetRegionName,
-  targetRegionAwaitingVideo,
+  targetRegionAwaitingCompletion,
   onClose,
   result,
   onResult,
@@ -141,7 +151,7 @@ export function LocationPanel({
   location: MapLocationInfo;
   isCurrentRegion: boolean;
   targetRegionName: string | null;
-  targetRegionAwaitingVideo: boolean;
+  targetRegionAwaitingCompletion: boolean;
   onClose: () => void;
   result: SubmitResult | undefined;
   onResult: (result: SubmitResult | null) => void;
@@ -153,9 +163,13 @@ export function LocationPanel({
   const [submitting, setSubmitting] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploading, setVideoUploading] = useState(false);
+  const [answerInput, setAnswerInput] = useState("");
+  const [answerSubmitting, setAnswerSubmitting] = useState(false);
+  const [answerWrong, setAnswerWrong] = useState(false);
   const [pulseShown, setPulseShown] = useState(false);
   const [zoomSrc, setZoomSrc] = useState<string | null>(null);
   const router = useRouter();
+  const isPuzzle = result?.mission?.type === "PUZZLE";
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] ?? null;
@@ -261,6 +275,35 @@ export function LocationPanel({
     }
   }
 
+  async function handleAnswerSubmit() {
+    if (!answerInput.trim() || !result?.submissionId) return;
+    setAnswerSubmitting(true);
+    setAnswerWrong(false);
+    try {
+      const res = await fetch(
+        `/api/submissions/${result.submissionId}/answer`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answer: answerInput }),
+        },
+      );
+      const data = await res.json();
+      if (data.ok && data.correct) {
+        onResult({ ...result, answerCorrect: true });
+        // 정답 제출로 지역이 "완료"로 잡혀 다음 목적지로 넘어가므로, 서버에서
+        // 계산되는 진행 상태를 다시 불러온다.
+        router.refresh();
+      } else {
+        setAnswerWrong(true);
+      }
+    } catch (e) {
+      console.error("정답 제출 실패:", e);
+    } finally {
+      setAnswerSubmitting(false);
+    }
+  }
+
   const passed = result?.result === "passed";
   // 통과 화면이나 실제 업로드 폼처럼 내용이 있는 상태만 패널을 넉넉하게 채움.
   // "이미 다른 포인트에서 통과함"/"차례 아님"/"마감" 같은 짧은 안내 문구만 있을
@@ -296,9 +339,9 @@ export function LocationPanel({
         <p className="text-sm text-ink">
           이미 {location.regionName}지역 &ldquo;{location.regionCompletedElsewhere.locationName}
           &rdquo;에서 통과했어요.{" "}
-          {location.regionCompletedElsewhere.videoUploaded
+          {location.regionCompletedElsewhere.completed
             ? "미션은 그 포인트에서 확인하세요."
-            : "그 포인트로 돌아가 미션 영상 업로드까지 마쳐주세요."}
+            : "그 포인트로 돌아가 미션을 마저 완료해주세요."}
         </p>
       ) : passed ? (
         <div className="space-y-3">
@@ -317,7 +360,7 @@ export function LocationPanel({
                 step === "video" ? "bg-ink text-paper" : "text-muted"
               }`}
             >
-              영상 업로드
+              {isPuzzle ? "정답 제출" : "영상 업로드"}
             </button>
           </div>
 
@@ -382,36 +425,75 @@ export function LocationPanel({
                 showPulse={false}
                 onPulseEnd={() => {}}
               />
-              <p className="label-tech text-[10px] text-muted">
-                미션 수행 영상 (10~20초)
-              </p>
-              {result.videoUrl ? (
-                <video
-                  controls
-                  src={result.videoUrl}
-                  className="w-full rounded-md border border-line"
-                />
+              {isPuzzle ? (
+                <>
+                  <p className="label-tech text-[10px] text-muted">정답</p>
+                  {result.answerCorrect ? (
+                    <p className="rounded-md border border-line bg-paper p-2 text-sm font-medium text-ink">
+                      정답이에요 — 미션 완료!
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {answerWrong && (
+                        <p className="rounded-md border border-accent bg-paper-panel p-2 text-sm font-medium text-accent">
+                          오답이에요. 다시 시도해보세요.
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <input
+                          value={answerInput}
+                          onChange={(e) => {
+                            setAnswerInput(e.target.value);
+                            setAnswerWrong(false);
+                          }}
+                          placeholder="정답 입력"
+                          className="flex-1 rounded-md border border-line px-3 py-2 text-sm"
+                        />
+                        <button
+                          onClick={handleAnswerSubmit}
+                          disabled={!answerInput.trim() || answerSubmitting}
+                          className="rounded-md bg-accent px-3 py-2 text-sm font-bold text-white shadow-[0_4px_12px_-4px_rgba(225,89,28,0.5)] disabled:opacity-40"
+                        >
+                          {answerSubmitting ? "확인 중..." : "제출"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="flex gap-2">
-                  <label className="flex-1 cursor-pointer rounded-md border border-line px-3 py-2 text-center text-sm font-medium">
-                    {videoFile ? videoFile.name : "영상 선택"}
-                    <input
-                      type="file"
-                      accept="video/*"
-                      className="hidden"
-                      onChange={(e) =>
-                        setVideoFile(e.target.files?.[0] ?? null)
-                      }
+                <>
+                  <p className="label-tech text-[10px] text-muted">
+                    미션 수행 영상 (10~20초)
+                  </p>
+                  {result.videoUrl ? (
+                    <video
+                      controls
+                      src={result.videoUrl}
+                      className="w-full rounded-md border border-line"
                     />
-                  </label>
-                  <button
-                    onClick={handleVideoUpload}
-                    disabled={!videoFile || videoUploading}
-                    className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-bold text-white shadow-[0_4px_12px_-4px_rgba(225,89,28,0.5)] disabled:opacity-40"
-                  >
-                    {videoUploading ? "업로드 중..." : "영상 업로드"}
-                  </button>
-                </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <label className="flex-1 cursor-pointer rounded-md border border-line px-3 py-2 text-center text-sm font-medium">
+                        {videoFile ? videoFile.name : "영상 선택"}
+                        <input
+                          type="file"
+                          accept="video/*"
+                          className="hidden"
+                          onChange={(e) =>
+                            setVideoFile(e.target.files?.[0] ?? null)
+                          }
+                        />
+                      </label>
+                      <button
+                        onClick={handleVideoUpload}
+                        disabled={!videoFile || videoUploading}
+                        className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-bold text-white shadow-[0_4px_12px_-4px_rgba(225,89,28,0.5)] disabled:opacity-40"
+                      >
+                        {videoUploading ? "업로드 중..." : "영상 업로드"}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -421,13 +503,13 @@ export function LocationPanel({
           <HoldCard
             headerLabel="LOCKED"
             headerRight={
-              targetRegionAwaitingVideo
-                ? `${targetRegionName}지역 · 영상 대기`
+              targetRegionAwaitingCompletion
+                ? `${targetRegionName}지역 · 완료 대기`
                 : `현재 · ${targetRegionName}지역`
             }
             message={
-              targetRegionAwaitingVideo
-                ? `${targetRegionName}지역 미션 영상 업로드 필요`
+              targetRegionAwaitingCompletion
+                ? `${targetRegionName}지역 미션 완료 필요`
                 : `${targetRegionName}지역부터 먼저 완료`
             }
           />

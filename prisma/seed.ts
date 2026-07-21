@@ -60,12 +60,12 @@ async function main() {
   );
 
   const ingredientDefs = [
-    { name: "떡", category: "주재료", variant: "일반떡", isBase: true },
-    { name: "떡", category: "주재료", variant: "치즈떡", isBase: true },
-    { name: "대파", category: "채소", variant: null, isBase: false },
-    { name: "고추장", category: "양념", variant: null, isBase: false },
-    { name: "치즈", category: "토핑", variant: null, isBase: false },
-    { name: "김가루", category: "토핑", variant: null, isBase: false },
+    { name: "떡(일반떡)" },
+    { name: "떡(치즈떡)" },
+    { name: "대파" },
+    { name: "고추장" },
+    { name: "치즈" },
+    { name: "김가루" },
   ];
   const ingredients = await Promise.all(
     ingredientDefs.map((data) => prisma.ingredient.create({ data })),

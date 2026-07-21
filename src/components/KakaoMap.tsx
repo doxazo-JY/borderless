@@ -9,7 +9,7 @@ export type MapLocation = {
   lat: number;
   lng: number;
   isPassed?: boolean; // 사진 판정 통과
-  isVideoDone?: boolean; // 미션 영상 업로드까지 완료
+  isMissionDone?: boolean; // 미션 완료(영상 업로드 또는 PUZZLE 정답 제출)까지 끝남
   isClosed?: boolean;
 };
 
@@ -25,30 +25,55 @@ const SCRIPT_ID = "kakao-maps-sdk";
 const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 const COMPASS_PREFERENCE_KEY = "borderless-compass-enabled";
 
-function applyPinStatus(pinEl: HTMLDivElement, loc: MapLocation) {
-  const statusSuffix = loc.isVideoDone
+// 선택된 마커는 색을 바꾸지 않고, 원래 상태 색을 살짝 어둡게 낮춰서 강조한다
+// (다른 색 링을 두르면 상태 색과 안 어울려 튀어 보였음).
+function darken(hex: string, percent: number): string {
+  const num = parseInt(hex.slice(1), 16);
+  const amt = Math.round(2.55 * percent);
+  const r = Math.max(0, (num >> 16) - amt);
+  const g = Math.max(0, ((num >> 8) & 0x00ff) - amt);
+  const b = Math.max(0, (num & 0x0000ff) - amt);
+  return `#${(0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)}`;
+}
+
+function applyPinStatus(
+  pinEl: HTMLDivElement,
+  loc: MapLocation,
+  isSelected: boolean,
+) {
+  const statusSuffix = loc.isMissionDone
     ? " (완료)"
     : loc.isPassed
-      ? " (영상 대기)"
+      ? " (완료 대기)"
       : loc.isClosed
         ? " (마감)"
         : "";
   pinEl.title = `${loc.regionName}지역 · ${loc.name}${statusSuffix}`;
-  pinEl.style.background = loc.isVideoDone
-    ? "#16a34a" // 완료(영상까지)
+  const baseColor = loc.isMissionDone
+    ? "#16a34a" // 완료(영상 업로드 또는 정답 제출까지)
     : loc.isPassed
-      ? "#e1591c" // 사진만 통과, 영상 대기 — 앱 액센트 컬러와 통일
+      ? "#e1591c" // 사진만 통과, 완료 대기 — 앱 액센트 컬러와 통일
       : loc.isClosed
         ? "#9ca3af"
         : "#2563eb";
+  pinEl.style.background = isSelected ? darken(baseColor, 25) : baseColor;
   pinEl.style.opacity = loc.isClosed && !loc.isPassed ? "0.75" : "1";
-  pinEl.textContent = loc.isVideoDone
+  // 선택된 마커는 겹친 것들 사이에서도 뭘 골랐는지 바로 보이도록 살짝 확대한다.
+  pinEl.style.width = isSelected ? "30px" : "24px";
+  pinEl.style.height = isSelected ? "30px" : "24px";
+  pinEl.style.fontSize = isSelected ? "11px" : "10px";
+  pinEl.style.boxShadow = "0 1px 4px rgba(0,0,0,0.5)";
+  // 지역 구분이 안 돼 있으면 마커만 봐선 어느 지역인지 알 수 없었다 — 지역 알파벳을
+  // 항상 표시하고, 상태 기호는 그 뒤에 붙여서 같이 보여준다.
+  const regionLetter = loc.regionName.toUpperCase();
+  const statusSymbol = loc.isMissionDone
     ? "✓"
     : loc.isPassed
       ? "▶"
       : loc.isClosed
         ? "✕"
         : "";
+  pinEl.textContent = `${regionLetter}${statusSymbol}`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -69,9 +94,11 @@ function getHeadingFromEvent(event: any): number | null {
 export function KakaoMap({
   locations,
   onSelectLocation,
+  selectedLocationId,
 }: {
   locations: MapLocation[];
   onSelectLocation?: (locationId: string) => void;
+  selectedLocationId?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(() =>
@@ -91,6 +118,9 @@ export function KakaoMap({
   // 통과/마감 상태가 바뀔 때마다 지도(및 마커) 전체를 새로 만들지 않고, 이미 만들어둔
   // 마커 DOM만 찾아서 색을 갱신하기 위한 위치별 참조
   const pinElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  // 선택된 마커를 시각적으로 맨 앞에 오게 하기 위한 오버레이 참조
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const overlaysRef = useRef<Map<string, any>>(new Map());
   // 내 위치 마커의 방향(나침반) 부채꼴 — DOM을 직접 회전시켜야 해서 ref로 들고 있는다
   const compassConeRef = useRef<HTMLDivElement | null>(null);
   const compassAttachedRef = useRef(false);
@@ -178,20 +208,22 @@ export function KakaoMap({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "12px",
+            fontSize: "10px",
             fontWeight: "bold",
             color: "white",
           });
-          applyPinStatus(pinEl, loc);
+          applyPinStatus(pinEl, loc, false);
           pinElsRef.current.set(loc.id, pinEl);
 
-          new window.kakao.maps.CustomOverlay({
+          const overlay = new window.kakao.maps.CustomOverlay({
             position,
             content: pinEl,
             map,
             xAnchor: 0.5,
             yAnchor: 0.5,
+            zIndex: 1,
           });
+          overlaysRef.current.set(loc.id, overlay);
         });
 
         const HIT_RADIUS_PX = 22;
@@ -343,15 +375,17 @@ export function KakaoMap({
     }
   }, [locations]);
 
-  // 마커 생성 자체는 최초 1회뿐이라(위 effect의 mapCreatedRef 가드), 통과/마감 상태가
-  // 바뀌었을 때 지도를 통째로 다시 만들지 않고 이미 그려둔 마커 DOM만 갱신한다 —
-  // 그래야 미션 통과 직후 지도를 새로고침하지 않아도 마커 색이 바로 바뀐다.
+  // 마커 생성 자체는 최초 1회뿐이라(위 effect의 mapCreatedRef 가드), 통과/마감 상태나
+  // 선택 여부가 바뀌었을 때 지도를 통째로 다시 만들지 않고 이미 그려둔 마커 DOM만
+  // 갱신한다 — 그래야 미션 통과 직후 지도를 새로고침하지 않아도 마커 색이 바로 바뀐다.
   useEffect(() => {
     for (const loc of locations) {
+      const isSelected = loc.id === selectedLocationId;
       const pinEl = pinElsRef.current.get(loc.id);
-      if (pinEl) applyPinStatus(pinEl, loc);
+      if (pinEl) applyPinStatus(pinEl, loc, isSelected);
+      overlaysRef.current.get(loc.id)?.setZIndex(isSelected ? 100 : 1);
     }
-  }, [locations]);
+  }, [locations, selectedLocationId]);
 
   // 카카오 지도는 컨테이너 크기가 바뀌어도(예: PC 화면에서 옆에 패널이 열리고 닫히며
   // 지도 폭이 변할 때) 스스로 다시 그리지 않아 빈 회색 영역이 생긴다 —
@@ -397,13 +431,16 @@ export function KakaoMap({
         <div className="absolute right-2 bottom-2 z-40">
           {showLegend && (
             <div className="label-tech absolute right-0 bottom-full mb-1 space-y-1 rounded-md border border-line bg-paper-panel p-2 text-[10px] text-ink shadow-[0_4px_12px_-4px_rgba(20,18,12,0.3)]">
+              <div className="whitespace-nowrap text-muted">
+                마커 위 알파벳 = 지역
+              </div>
               <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="h-3 w-3 shrink-0 rounded-full bg-[#2563eb]" />
                 미시도
               </div>
               <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="h-3 w-3 shrink-0 rounded-full bg-[#e1591c]" />
-                통과 · 영상 대기
+                통과 · 완료 대기
               </div>
               <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="h-3 w-3 shrink-0 rounded-full bg-[#16a34a]" />

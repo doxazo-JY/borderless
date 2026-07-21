@@ -149,7 +149,11 @@ export async function POST(request: Request) {
     submissionId: submission.id,
     photoUrl,
     mission: location.mission
-      ? { type: location.mission.type, content: location.mission.content }
+      ? {
+          type: location.mission.type,
+          content: location.mission.content,
+          imageUrl: location.mission.imageUrl,
+        }
       : null,
   });
 }

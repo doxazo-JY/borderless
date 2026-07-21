@@ -17,7 +17,7 @@ export default async function AdminLayout({
 
   return (
     <div className="flex flex-1 flex-col">
-      <nav className="flex flex-wrap gap-4 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-sm">
+      <nav className="sticky top-0 z-30 flex flex-wrap gap-4 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-sm">
         <Link href={`${base}/setup`} className="underline underline-offset-2">
           설정
         </Link>
@@ -27,17 +27,11 @@ export default async function AdminLayout({
         >
           도움 요청
         </Link>
-        <Link href={`${base}/grants`} className="underline underline-offset-2">
-          지급 확정
-        </Link>
         <Link
           href={`${base}/dashboard`}
           className="underline underline-offset-2"
         >
           대시보드
-        </Link>
-        <Link href={`${base}/videos`} className="underline underline-offset-2">
-          제출 영상
         </Link>
       </nav>
       {children}

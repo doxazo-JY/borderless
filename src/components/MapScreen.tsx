@@ -19,19 +19,27 @@ export type MapLocationInfo = {
   isClosed: boolean;
   passedInfo: {
     submissionId: string;
-    mission: { type: string; content: string } | null;
+    mission: { type: string; content: string; imageUrl: string | null } | null;
     photoUrl: string | null;
     videoUrl: string | null;
+    answerCorrect: boolean;
     aiReason: string | null;
   } | null;
   regionCompletedElsewhere: {
     locationName: string;
-    videoUploaded: boolean;
+    completed: boolean;
   } | null;
   lastFailedInfo: { message: string; photoUrl: string | null } | null;
 };
 
 export type PanelStep = "pass" | "video";
+
+// PUZZLE 미션은 영상 업로드가 없으니 정답 제출 여부로 완료를 판단한다.
+function isMissionDone(passedInfo: NonNullable<MapLocationInfo["passedInfo"]>) {
+  return passedInfo.mission?.type === "PUZZLE"
+    ? passedInfo.answerCorrect
+    : !!passedInfo.videoUrl;
+}
 
 function regionInitialResult(
   location: MapLocationInfo,
@@ -43,6 +51,7 @@ function regionInitialResult(
       mission: location.passedInfo.mission,
       photoUrl: location.passedInfo.photoUrl,
       videoUrl: location.passedInfo.videoUrl,
+      answerCorrect: location.passedInfo.answerCorrect,
       message: location.passedInfo.aiReason ?? undefined,
     };
   }
@@ -93,10 +102,11 @@ export function MapScreen({
       ? ((currentIndex >= 0 ? currentIndex : regionProgress.length - 1) + 0.5) /
         regionProgress.length
       : 0.5;
-  // 이미 이 지역에서 AI 판정은 통과하고 영상 업로드만 남은 상태면 "다음 목적지"라는
-  // 말이 어색하므로("이미 여기 있는데 다음 목적지가 여기?"), 문구를 다르게 보여준다.
-  const targetRegionAwaitingVideo = locations.some(
-    (l) => l.regionId === targetRegionId && l.passedInfo && !l.passedInfo.videoUrl,
+  // 이미 이 지역에서 AI 판정은 통과하고 완료(영상 업로드/정답 제출)만 남은 상태면
+  // "다음 목적지"라는 말이 어색하므로("이미 여기 있는데 다음 목적지가 여기?"),
+  // 문구를 다르게 보여준다.
+  const targetRegionAwaitingCompletion = locations.some(
+    (l) => l.regionId === targetRegionId && l.passedInfo && !isMissionDone(l.passedInfo),
   );
 
   return (
@@ -181,14 +191,20 @@ export function MapScreen({
             <KakaoMap
               locations={locations.map((loc) => {
                 const passed = results[loc.id]?.result === "passed";
+                const r = results[loc.id];
                 return {
                   ...loc,
                   isPassed: passed,
-                  isVideoDone: passed && !!results[loc.id]?.videoUrl,
+                  isMissionDone:
+                    passed &&
+                    (r?.mission?.type === "PUZZLE"
+                      ? !!r?.answerCorrect
+                      : !!r?.videoUrl),
                   isClosed: loc.isClosed,
                 };
               })}
               onSelectLocation={(id) => setSelectedId(id)}
+              selectedLocationId={selectedId}
             />
           </div>
 
@@ -202,7 +218,7 @@ export function MapScreen({
               location={selectedLocation}
               isCurrentRegion={selectedLocation.regionId === targetRegionId}
               targetRegionName={targetRegionName}
-              targetRegionAwaitingVideo={targetRegionAwaitingVideo}
+              targetRegionAwaitingCompletion={targetRegionAwaitingCompletion}
               onClose={() => setSelectedId(null)}
               result={results[selectedLocation.id]}
               onResult={(r) =>
@@ -243,8 +259,8 @@ export function MapScreen({
             className="label-tech absolute top-2 z-40 -translate-x-1/2 rounded-md border border-line bg-white/90 px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap text-ink shadow-[0_3px_10px_rgba(20,18,12,0.12)]"
             style={{ left: `${stepperPct * 100}%` }}
           >
-            {targetRegionAwaitingVideo
-              ? `${targetRegionName}지역 · 영상 업로드 남음`
+            {targetRegionAwaitingCompletion
+              ? `${targetRegionName}지역 · 미션 완료 남음`
               : `현재 목적지 · ${targetRegionName}지역`}
           </div>
         )}

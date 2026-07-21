@@ -17,14 +17,15 @@ export async function getGroupRegionProgress(
       orderBy: { position: "asc" },
       include: { region: true },
     }),
-    // 사진 판정 통과만으로는 지역이 "완료"되지 않는다 — 미션 영상 업로드까지 끝나야
-    // 다음 지역으로 넘어간다(그 전까지 상단 진행 표시/차례는 이 지역에 그대로 머문다).
+    // 사진 판정 통과만으로는 지역이 "완료"되지 않는다 — 미션 완료(영상 업로드 또는,
+    // PUZZLE 타입이면 정답 제출)까지 끝나야 다음 지역으로 넘어간다(그 전까지 상단
+    // 진행 표시/차례는 이 지역에 그대로 머문다).
     prisma.submission.findMany({
       where: {
         groupId,
         aiPassed: true,
-        videoUrl: { not: null },
         location: { isActive: true },
+        OR: [{ videoUrl: { not: null } }, { answerCorrect: true }],
       },
       select: { location: { select: { regionId: true } } },
     }),

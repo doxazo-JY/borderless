@@ -23,7 +23,7 @@ export default async function HelpRequestsPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-xl space-y-6 p-4">
+    <main className="mx-auto max-w-7xl space-y-6 p-4">
       <h1 className="text-xl font-bold">도움 요청</h1>
 
       <section>
@@ -33,11 +33,11 @@ export default async function HelpRequestsPage({
         {open.length === 0 && (
           <p className="text-sm text-zinc-400">열려있는 요청이 없어요.</p>
         )}
-        <ul className="space-y-2">
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {open.map((hr) => (
             <li
               key={hr.id}
-              className="flex items-center justify-between rounded border border-red-200 bg-red-50 p-3"
+              className="flex items-center justify-between gap-2 rounded border border-red-200 bg-red-50 p-3"
             >
               <div className="text-sm">
                 <p className="font-semibold">{hr.group.displayName}</p>
