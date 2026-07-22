@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({
       result: "closed",
-      message: "이미 마감된 포인트예요. 같은 지역의 다른 포인트로 가보세요.",
+      message: "이미 마감된 장소입니다. 다른 장소로 이동해주세요.",
     });
   }
 

@@ -335,6 +335,19 @@ export function LocationPanel({
         </button>
       </div>
 
+      {location.teammateProgress && (
+        <div className="mb-3 rounded-md border border-line bg-paper p-2">
+          <p className="label-tech mb-1 text-[10px] text-accent">
+            같은 팀 진행 상황
+          </p>
+          <p className="text-sm text-ink">
+            {location.teammateProgress.groupDisplayName}가 이미{" "}
+            {location.regionName}지역 &ldquo;{location.teammateProgress.locationName}
+            &rdquo;에서 통과했어요.
+          </p>
+        </div>
+      )}
+
       {!passed && location.regionCompletedElsewhere ? (
         <p className="text-sm text-ink">
           이미 {location.regionName}지역 &ldquo;{location.regionCompletedElsewhere.locationName}

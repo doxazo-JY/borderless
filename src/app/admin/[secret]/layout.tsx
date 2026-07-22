@@ -21,17 +21,8 @@ export default async function AdminLayout({
         <Link href={`${base}/setup`} className="underline underline-offset-2">
           설정
         </Link>
-        <Link
-          href={`${base}/help-requests`}
-          className="underline underline-offset-2"
-        >
-          도움 요청
-        </Link>
-        <Link
-          href={`${base}/dashboard`}
-          className="underline underline-offset-2"
-        >
-          대시보드
+        <Link href={`${base}/team`} className="underline underline-offset-2">
+          팀
         </Link>
       </nav>
       {children}

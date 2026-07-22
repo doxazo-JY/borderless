@@ -1,6 +1,6 @@
 "use client";
 
-import { toggleGroupSelectionLock } from "@/app/admin/[secret]/setup/actions";
+import { toggleGroupSelectionLock } from "@/app/admin/[secret]/team/actions";
 
 export function GroupLockToggle({ locked }: { locked: boolean }) {
   return (

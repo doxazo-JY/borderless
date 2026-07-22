@@ -20,22 +20,38 @@ export default async function MapPage() {
     orderBy: [{ region: { name: "asc" } }, { name: "asc" }],
   });
 
-  const [regionProgress, closedLocationIds, passedSubmissions, failedSubmissions, settings] =
-    await Promise.all([
-      getGroupRegionProgress(group.id),
-      getTeamClosedLocationIds(group.teamId),
-      prisma.submission.findMany({
-        where: { groupId: group.id, aiPassed: true, location: { isActive: true } },
-        include: { location: { include: { mission: true } } },
-      }),
-      // 실패 사유도 새로고침 후 계속 보이게 하려면 서버에서 같이 내려줘야 한다 —
-      // 통과 여부와 달리 실패는 클라이언트 state에만 있어서 새로고침하면 사라졌음.
-      prisma.submission.findMany({
-        where: { groupId: group.id, aiPassed: false, location: { isActive: true } },
-        orderBy: { createdAt: "desc" },
-      }),
-      getAppSettings(),
-    ]);
+  const [
+    regionProgress,
+    closedLocationIds,
+    passedSubmissions,
+    failedSubmissions,
+    teammateSubmissions,
+    settings,
+  ] = await Promise.all([
+    getGroupRegionProgress(group.id),
+    getTeamClosedLocationIds(group.teamId),
+    prisma.submission.findMany({
+      where: { groupId: group.id, aiPassed: true, location: { isActive: true } },
+      include: { location: { include: { mission: true } } },
+    }),
+    // 실패 사유도 새로고침 후 계속 보이게 하려면 서버에서 같이 내려줘야 한다 —
+    // 통과 여부와 달리 실패는 클라이언트 state에만 있어서 새로고침하면 사라졌음.
+    prisma.submission.findMany({
+      where: { groupId: group.id, aiPassed: false, location: { isActive: true } },
+      orderBy: { createdAt: "desc" },
+    }),
+    // 같은 팀 다른 조가 이미 통과한 지역을 알려주기 위한 조회 — 팀 밖으로는
+    // 절대 안 새어나가야 하므로 group.teamId로만 필터링한다.
+    prisma.submission.findMany({
+      where: {
+        aiPassed: true,
+        location: { isActive: true },
+        group: { teamId: group.teamId, id: { not: group.id } },
+      },
+      include: { group: true, location: true },
+    }),
+    getAppSettings(),
+  ]);
 
   const targetRegionId =
     regionProgress.find((p) => p.status === "current")?.regionId ?? null;
@@ -98,6 +114,21 @@ export default async function MapPage() {
     }
   }
 
+  // 같은 팀 다른 조가 그 지역을 어디서든 이미 통과했으면 지역당 하나만 기억한다
+  // (여러 조가 겹쳐도 첫 번째만 안내) — 이 그룹 자신의 진행에는 영향 없는 순수 안내용.
+  const teammatePassedByRegionId = new Map<
+    string,
+    { groupDisplayName: string; locationName: string }
+  >();
+  for (const s of teammateSubmissions) {
+    if (!teammatePassedByRegionId.has(s.location.regionId)) {
+      teammatePassedByRegionId.set(s.location.regionId, {
+        groupDisplayName: s.group.displayName,
+        locationName: s.location.name,
+      });
+    }
+  }
+
   const mapLocations = locations.map((loc) => {
     const regionPassed = passedByRegionId.get(loc.regionId);
     return {
@@ -111,6 +142,7 @@ export default async function MapPage() {
       isClosed: closedLocationIds.has(loc.id),
       passedInfo: passedByLocationId.get(loc.id) ?? null,
       lastFailedInfo: lastFailedByLocationId.get(loc.id) ?? null,
+      teammateProgress: teammatePassedByRegionId.get(loc.regionId) ?? null,
       regionCompletedElsewhere:
         regionPassed && regionPassed.locationId !== loc.id
           ? {

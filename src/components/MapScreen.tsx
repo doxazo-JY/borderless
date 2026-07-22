@@ -30,6 +30,9 @@ export type MapLocationInfo = {
     completed: boolean;
   } | null;
   lastFailedInfo: { message: string; photoUrl: string | null } | null;
+  // 같은 팀 다른 조가 이 지역을 이미 통과했으면 채워짐 — 팀 밖으로는 안 보임(서버에서
+  // teamId로 이미 필터링됨), 이 그룹 자신의 진행/제출 가능 여부에는 영향 없는 안내용.
+  teammateProgress: { groupDisplayName: string; locationName: string } | null;
 };
 
 export type PanelStep = "pass" | "video";

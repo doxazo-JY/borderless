@@ -3,34 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { uploadPhoto } from "@/lib/storage";
-import { getAppSettings } from "@/lib/settings";
 
 const SETUP_PATH = `/admin/${process.env.ADMIN_SECRET_PATH}/setup`;
 
 function refresh() {
   revalidatePath(SETUP_PATH);
-}
-
-export async function toggleGroupSelectionLock() {
-  const settings = await getAppSettings();
-  await prisma.appSettings.update({
-    where: { id: settings.id },
-    data: { groupSelectionLocked: !settings.groupSelectionLocked },
-  });
-  refresh();
-}
-
-export async function updateGroupMembers(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  if (!id) return;
-  const memberName1 = String(formData.get("memberName1") ?? "").trim() || null;
-  const memberName2 = String(formData.get("memberName2") ?? "").trim() || null;
-
-  await prisma.group.update({
-    where: { id },
-    data: { memberName1, memberName2 },
-  });
-  refresh();
 }
 
 export async function createLocation(formData: FormData) {
@@ -200,22 +177,5 @@ export async function deleteIngredient(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   await prisma.ingredient.delete({ where: { id } });
-  refresh();
-}
-
-export async function setGroupRegionOrder(formData: FormData) {
-  const groupId = String(formData.get("groupId") ?? "");
-  const regionIds = formData.getAll("regionOrder").map(String);
-  if (!groupId || regionIds.length === 0) return;
-
-  await prisma.$transaction([
-    prisma.groupRegionOrder.deleteMany({ where: { groupId } }),
-    ...regionIds.map((regionId, position) =>
-      prisma.groupRegionOrder.create({
-        data: { groupId, regionId, position },
-      }),
-    ),
-  ]);
-
   refresh();
 }
