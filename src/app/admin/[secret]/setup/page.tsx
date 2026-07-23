@@ -240,6 +240,7 @@ export default async function AdminSetupPage() {
               </div>
               <LocationDetailsEditor
                 locationId={loc.id}
+                currentName={loc.name}
                 currentMissionId={loc.missionId}
                 currentIngredientIds={loc.ingredients.map((ing) => ing.id)}
                 currentJudgePrompt={loc.judgePrompt}

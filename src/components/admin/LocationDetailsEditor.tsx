@@ -7,6 +7,7 @@ type Option = { id: string; label: string };
 
 export function LocationDetailsEditor({
   locationId,
+  currentName,
   currentMissionId,
   currentIngredientIds,
   currentJudgePrompt,
@@ -14,6 +15,7 @@ export function LocationDetailsEditor({
   ingredients,
 }: {
   locationId: string;
+  currentName: string;
   currentMissionId: string | null;
   currentIngredientIds: string[];
   currentJudgePrompt: string;
@@ -29,7 +31,7 @@ export function LocationDetailsEditor({
         onClick={() => setOpen(true)}
         className="text-[10px] text-blue-600 underline"
       >
-        미션/재료/판정질문 수정
+        이름/미션/재료/판정질문 수정
       </button>
     );
   }
@@ -43,6 +45,12 @@ export function LocationDetailsEditor({
       className="mt-1 space-y-1.5 rounded border border-zinc-200 bg-zinc-50 p-2"
     >
       <input type="hidden" name="id" value={locationId} />
+      <input
+        name="name"
+        defaultValue={currentName}
+        placeholder="포인트 이름"
+        className="w-full rounded border border-zinc-300 p-1 text-[10px]"
+      />
       <textarea
         name="judgePrompt"
         defaultValue={currentJudgePrompt}

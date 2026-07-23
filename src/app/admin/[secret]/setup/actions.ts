@@ -61,6 +61,7 @@ export async function updateLocationPhoto(formData: FormData) {
 export async function updateLocationDetails(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+  const name = String(formData.get("name") ?? "").trim();
   const missionId = String(formData.get("missionId") ?? "") || null;
   const ingredientIds = formData.getAll("ingredientIds").map(String);
   const judgePrompt = String(formData.get("judgePrompt") ?? "").trim();
@@ -70,6 +71,7 @@ export async function updateLocationDetails(formData: FormData) {
     data: {
       missionId,
       ingredients: { set: ingredientIds.map((ingId) => ({ id: ingId })) },
+      ...(name ? { name } : {}),
       ...(judgePrompt ? { judgePrompt } : {}),
     },
   });
