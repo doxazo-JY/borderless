@@ -1,11 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
 import { GroupLockToggle } from "@/components/admin/GroupLockToggle";
+import { AiJudgingToggle } from "@/components/admin/AiJudgingToggle";
 import { DownloadLink } from "@/components/admin/DownloadLink";
 import { BulkDownloadButton, type DownloadFile } from "@/components/admin/BulkDownloadButton";
 import { getAppSettings } from "@/lib/settings";
 import {
   confirmGrant,
+  failHelpRequest,
+  passHelpRequest,
   resetAllSubmissions,
   resetSubmission,
   resolveHelpRequest,
@@ -78,6 +81,25 @@ export default async function TeamPage() {
         take: 20,
       }),
     ]);
+
+  // 도움 요청 카드에서 임원이 판단할 수 있게, 그 조가 그 포인트에서 마지막으로
+  // 시도한 제출(통과 여부 상관없이 — AI가 막혀서 aiPassed가 null인 것도 포함)을
+  // 같이 보여준다. 열린 요청 개수가 적어서 요청당 조회 하나씩 병렬로 돌려도 무리 없음.
+  const lastAttemptByHelpRequestId = new Map(
+    (
+      await Promise.all(
+        openHelpRequests
+          .filter((hr) => hr.locationId)
+          .map(async (hr) => {
+            const submission = await prisma.submission.findFirst({
+              where: { groupId: hr.groupId, locationId: hr.locationId! },
+              orderBy: { createdAt: "desc" },
+            });
+            return [hr.id, submission] as const;
+          }),
+      )
+    ).filter((entry): entry is [string, NonNullable<(typeof entry)[1]>] => !!entry[1]),
+  );
 
   // "전체 zip 다운로드"용 파일 목록 — 통과한 모든 제출의 사진/영상을 한 번에 모은다.
   const downloadFiles: DownloadFile[] = [];
@@ -172,7 +194,10 @@ export default async function TeamPage() {
             )),
           )}
         </ul>
-        <GroupLockToggle locked={settings.groupSelectionLocked} />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <GroupLockToggle locked={settings.groupSelectionLocked} />
+          <AiJudgingToggle disabled={settings.aiJudgingDisabled} />
+        </div>
       </section>
 
       {/* 그룹별 진행 */}
@@ -215,7 +240,9 @@ export default async function TeamPage() {
           <p className="text-sm text-zinc-400">열려있는 요청이 없어요.</p>
         )}
         <ul className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-3">
-          {openHelpRequests.map((hr) => (
+          {openHelpRequests.map((hr) => {
+            const lastAttempt = lastAttemptByHelpRequestId.get(hr.id);
+            return (
             <li
               key={hr.id}
               className="flex flex-col gap-3 rounded border border-red-200 bg-red-50 p-4"
@@ -237,14 +264,79 @@ export default async function TeamPage() {
                   </p>
                 )}
               </div>
-              <form action={resolveHelpRequest} className="self-end">
-                <input type="hidden" name="id" value={hr.id} />
-                <button className="rounded bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white">
-                  해결됨
-                </button>
-              </form>
+
+              {hr.location && (
+                <div className="rounded border border-red-100 bg-white p-2">
+                  <p className="mb-1 text-[10px] font-semibold text-zinc-500">
+                    마지막 제출 시도
+                  </p>
+                  {lastAttempt ? (
+                    <div className="flex items-start gap-2">
+                      {lastAttempt.photoUrl && (
+                        <a href={lastAttempt.photoUrl} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={lastAttempt.photoUrl}
+                            alt=""
+                            className="h-16 w-16 shrink-0 rounded object-cover"
+                          />
+                        </a>
+                      )}
+                      <p className="text-xs text-zinc-600">
+                        {lastAttempt.aiPassed === false
+                          ? `AI 실패: ${lastAttempt.aiReason || "사유 없음"}`
+                          : lastAttempt.aiPassed === null
+                            ? "AI 판정 오류로 자동 판정 못 함 (사진은 있음)"
+                            : "이미 통과 처리됨"}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-zinc-400">
+                      아직 제출 기록 없음 — 조가 사진을 안 올렸거나 업로드 자체가 실패했을 수 있어요.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                {hr.location && (
+                  <form action={passHelpRequest}>
+                    <input type="hidden" name="helpRequestId" value={hr.id} />
+                    <ConfirmDeleteButton
+                      label="통과 처리"
+                      className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white"
+                      confirmText={`${hr.group.displayName}를 "${hr.location.name}"에서 통과 처리할까요? 캡 차감/미션 공개까지 실제 통과와 동일하게 처리됩니다.`}
+                    />
+                  </form>
+                )}
+                <form action={resolveHelpRequest}>
+                  <input type="hidden" name="id" value={hr.id} />
+                  <button className="rounded bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white">
+                    해결됨 (통과 안 시킴)
+                  </button>
+                </form>
+              </div>
+
+              {hr.location && (
+                <form
+                  action={failHelpRequest}
+                  className="flex items-center gap-1 border-t border-red-100 pt-2"
+                >
+                  <input type="hidden" name="helpRequestId" value={hr.id} />
+                  <input
+                    name="reason"
+                    required
+                    placeholder="반려 사유 (조에게 그대로 보여요)"
+                    className="min-w-0 flex-1 rounded border border-zinc-300 p-1 text-xs"
+                  />
+                  <button className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-600">
+                    반려
+                  </button>
+                </form>
+              )}
             </li>
-          ))}
+            );
+          })}
         </ul>
 
         {resolvedHelpRequests.length > 0 && (

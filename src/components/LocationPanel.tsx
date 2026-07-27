@@ -466,7 +466,7 @@ export function LocationPanel({
         <p className="text-sm text-ink">{result.message}</p>
       ) : (
         <div className="space-y-3">
-          {result?.result === "failed" && (
+          {(result?.result === "failed" || result?.result === "ai_error") && (
             <p className="rounded-md border border-accent bg-paper-panel p-2 text-sm font-medium text-accent">
               {result.message}
             </p>
@@ -529,7 +529,7 @@ export function LocationPanel({
             </button>
           </div>
 
-          {result?.result === "failed" && (
+          {(result?.result === "failed" || result?.result === "ai_error") && (
             <button
               onClick={resetForRetry}
               className="text-xs text-muted underline underline-offset-2"

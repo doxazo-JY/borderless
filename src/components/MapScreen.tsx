@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { KakaoMap } from "@/components/KakaoMap";
 import { LocationPanel, type SubmitResult } from "@/components/LocationPanel";
@@ -73,6 +74,7 @@ export function MapScreen({
   targetRegionId,
   targetRegionName,
   groupSelectionLocked,
+  aiJudgingDisabled,
   earnedIngredients,
   teammatesRegionProgress,
 }: {
@@ -82,6 +84,7 @@ export function MapScreen({
   targetRegionId: string | null;
   targetRegionName: string | null;
   groupSelectionLocked: boolean;
+  aiJudgingDisabled: boolean;
   earnedIngredients: { id: string; name: string }[];
   teammatesRegionProgress: {
     groupId: string;
@@ -102,6 +105,20 @@ export function MapScreen({
     return initial;
   });
   const [steps, setSteps] = useState<Record<string, PanelStep>>({});
+  const router = useRouter();
+
+  // 서버가 내려주는 정보(AI 판정 중단 배너, 같은 팀 다른 조 현황, 마감 여부 등)가
+  // 참가자가 직접 새로고침하지 않아도 주기적으로 갱신되도록 폴링한다. 이 화면
+  // 자체는 서버 컴포넌트가 매번 다시 계산해 내려주므로, 여기서 할 일은 그 다시
+  // 불러오기를 주기적으로 트리거하는 것뿐이다 — 패널을 열어둔 상태나 입력 중인
+  // 폼(사진/영상 선택 등)의 로컬 state는 이 컴포넌트가 리마운트되는 게 아니라서
+  // 그대로 유지된다.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [router]);
 
   const selectedLocation = locations.find((l) => l.id === selectedId) ?? null;
   const currentIndex = regionProgress.findIndex((p) => p.status === "current");
@@ -119,6 +136,12 @@ export function MapScreen({
 
   return (
     <main className="flex flex-1 flex-col bg-paper text-ink">
+      {aiJudgingDisabled && (
+        <div className="label-tech border-b border-accent bg-accent px-4 py-2 text-center text-[11px] font-bold text-white">
+          현재 AI 평가가 불가능해 임원의 수동 평가가 진행될 예정입니다. 사진 제출 후
+          "임원 도움 요청" 버튼을 눌러주세요.
+        </div>
+      )}
       <div className="relative border-b border-line px-4 py-3">
         <div className="flex items-center justify-between">
           <div>

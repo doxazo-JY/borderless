@@ -36,6 +36,9 @@ enum HelpRequestStatus {
 model AppSettings {
   id                   String  @id @default(cuid())
   groupSelectionLocked Boolean @default(false)
+  // AI 판정 API가 막혔을 때(크레딧 소진/장애 등) 임원이 수동으로 켜는 스위치 —
+  // 켜져 있는 동안 참가자 화면 상단에 "임원 수동 평가 진행 중" 배너가 계속 표시된다.
+  aiJudgingDisabled    Boolean @default(false)
 }
 
 model Team {

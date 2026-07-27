@@ -83,11 +83,35 @@ export async function POST(request: Request) {
     .from(STORAGE_BUCKET)
     .getPublicUrl(photoPath);
   const photoUrl = photoUrlData.publicUrl;
-  const judgement = await judgePhotoMatch({
-    referencePhotoUrl: location.referencePhotoUrl,
-    uploadedPhotoUrl: photoUrl,
-    judgePrompt: location.judgePrompt,
-  });
+
+  let judgement;
+  try {
+    judgement = await judgePhotoMatch({
+      referencePhotoUrl: location.referencePhotoUrl,
+      uploadedPhotoUrl: photoUrl,
+      judgePrompt: location.judgePrompt,
+    });
+  } catch (e) {
+    // AI API 자체가 막힌 경우(크레딧 소진/장애 등) — 판정 없이 그냥 에러로 묻히면
+    // 제출 기록이 아예 안 남아서 임원이 사진을 볼 방법이 없어진다. aiPassed를
+    // null로 남긴 제출을 만들어 사진만이라도 남기고, 임원 도움 요청으로 안내한다.
+    console.error("AI 판정 API 호출 실패:", e);
+    await prisma.submission.create({
+      data: {
+        groupId: group.id,
+        locationId: location.id,
+        photoUrl,
+        capStatus: "AVAILABLE",
+        aiPassed: null,
+      },
+    });
+    return NextResponse.json({
+      result: "ai_error",
+      message:
+        "지금 AI 판정을 사용할 수 없어요. 사진은 저장됐으니 '임원 도움 요청' 버튼을 눌러 확인을 요청해주세요.",
+      photoUrl,
+    });
+  }
 
   if (!judgement.passed) {
     await prisma.submission.create({

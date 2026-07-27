@@ -19,6 +19,15 @@ export async function toggleGroupSelectionLock() {
   refresh();
 }
 
+export async function toggleAiJudgingDisabled() {
+  const settings = await getAppSettings();
+  await prisma.appSettings.update({
+    where: { id: settings.id },
+    data: { aiJudgingDisabled: !settings.aiJudgingDisabled },
+  });
+  refresh();
+}
+
 export async function updateGroupMembers(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
@@ -106,5 +115,85 @@ export async function resolveHelpRequest(formData: FormData) {
     data: { status: "RESOLVED" },
   });
 
+  refresh();
+}
+
+// 임원이 도움 요청을 보고 직접 통과 처리 — AI 판정 API가 막혔거나(크레딧 소진 등)
+// AI가 틀렸다고 판단될 때 쓰는 수동 오버라이드. 정상 판정 통과와 똑같이 캡을
+// 원자적으로 차감하고 슬롯을 배정해서 미션이 공개되게 한다.
+export async function passHelpRequest(formData: FormData) {
+  const helpRequestId = String(formData.get("helpRequestId") ?? "");
+  if (!helpRequestId) return;
+
+  const hr = await prisma.helpRequest.findUnique({ where: { id: helpRequestId } });
+  if (!hr || !hr.locationId) {
+    throw new Error("장소가 지정되지 않은 요청은 통과 처리할 수 없어요.");
+  }
+
+  // 지역당 통과는 한 곳만 — 이미 같은 지역 다른 포인트에서 통과했다면 여기서도 막는다
+  // (참가자 정상 흐름의 서버 검증과 같은 규칙, 안 지키면 지역 완료 집계가 깨짐).
+  const location = await prisma.location.findUnique({ where: { id: hr.locationId } });
+  if (!location) return;
+  const passedInRegion = await prisma.submission.findFirst({
+    where: {
+      groupId: hr.groupId,
+      aiPassed: true,
+      location: { regionId: location.regionId, isActive: true },
+    },
+    include: { location: true },
+  });
+  if (passedInRegion && passedInRegion.locationId !== location.id) {
+    throw new Error(
+      `이 조는 이미 "${passedInRegion.location.name}"에서 이 지역을 통과했어요 — 중복 통과 처리할 수 없습니다.`,
+    );
+  }
+
+  const claimed = await prisma.$queryRaw<{ claimedCount: number }[]>`
+    UPDATE "Location"
+    SET "claimedCount" = "claimedCount" + 1
+    WHERE id = ${location.id} AND "claimedCount" < capacity
+    RETURNING "claimedCount"
+  `;
+  if (claimed.length === 0) {
+    throw new Error("이미 마감된 포인트라 통과 처리할 수 없어요 — 초기화 후 다시 시도하세요.");
+  }
+
+  await prisma.submission.create({
+    data: {
+      groupId: hr.groupId,
+      locationId: location.id,
+      capStatus: "AVAILABLE",
+      aiPassed: true,
+      aiReason: "임원 확인 후 통과 처리되었습니다.",
+      grantStatus: "PENDING",
+      missionSlot: claimed[0].claimedCount,
+    },
+  });
+
+  await prisma.helpRequest.update({ where: { id: hr.id }, data: { status: "RESOLVED" } });
+  refresh();
+}
+
+// 임원이 사진을 확인했는데 실제로 기준과 다를 때 — 사유를 남겨서 AI가 실패시켰을
+// 때와 같은 화면(사유 + 재시도)이 조에게 뜨도록 한다. 캡은 건드리지 않는다.
+export async function failHelpRequest(formData: FormData) {
+  const helpRequestId = String(formData.get("helpRequestId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!helpRequestId || !reason) return;
+
+  const hr = await prisma.helpRequest.findUnique({ where: { id: helpRequestId } });
+  if (!hr || !hr.locationId) return;
+
+  await prisma.submission.create({
+    data: {
+      groupId: hr.groupId,
+      locationId: hr.locationId,
+      capStatus: "AVAILABLE",
+      aiPassed: false,
+      aiReason: reason,
+    },
+  });
+
+  await prisma.helpRequest.update({ where: { id: hr.id }, data: { status: "RESOLVED" } });
   refresh();
 }
