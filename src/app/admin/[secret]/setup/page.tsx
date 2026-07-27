@@ -18,7 +18,7 @@ const MISSION_LABEL: Record<string, string> = {
   WORD: "말씀",
   PRAISE: "찬양",
   PRAYER: "기도",
-  PUZZLE: "퀴즈",
+  CONFESSION: "고백",
 };
 
 export default async function AdminSetupPage() {
@@ -78,7 +78,6 @@ export default async function AdminSetupPage() {
                     {MISSION_LABEL[m.type] ?? m.type}
                   </span>{" "}
                   — {m.content || "(자유곡)"}
-                  {m.type === "PUZZLE" && m.answer ? ` · 정답: ${m.answer}` : ""}
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-1.5">
@@ -86,7 +85,6 @@ export default async function AdminSetupPage() {
                   missionId={m.id}
                   currentType={m.type}
                   currentContent={m.content}
-                  currentAnswer={m.answer}
                 />
                 <form action={deleteMission} className="shrink-0">
                   <input type="hidden" name="id" value={m.id} />
@@ -107,16 +105,11 @@ export default async function AdminSetupPage() {
             <option value="WORD">말씀</option>
             <option value="PRAISE">찬양</option>
             <option value="PRAYER">기도</option>
-            <option value="PUZZLE">퀴즈</option>
+            <option value="CONFESSION">고백</option>
           </select>
           <input
             name="content"
-            placeholder="본문/기도 주제/퀴즈 내용 (찬양은 비워둬도 됨)"
-            className="flex-1 rounded border border-zinc-300 p-2 text-sm"
-          />
-          <input
-            name="answer"
-            placeholder="정답(퀴즈 전용, 쉼표로 여러 개)"
+            placeholder="본문/기도 주제/고백 지시문 (찬양은 비워둬도 됨)"
             className="flex-1 rounded border border-zinc-300 p-2 text-sm"
           />
           <input
@@ -244,12 +237,23 @@ export default async function AdminSetupPage() {
               <LocationDetailsEditor
                 locationId={loc.id}
                 currentName={loc.name}
+                currentLat={loc.lat}
+                currentLng={loc.lng}
                 currentMission1Id={loc.mission1Id}
                 currentMission2Id={loc.mission2Id}
                 currentIngredientIds={loc.ingredients.map((ing) => ing.id)}
                 currentJudgePrompt={loc.judgePrompt}
                 missions={missionOptions}
                 ingredients={ingredientOptions}
+                existingLocations={locations
+                  .filter((other) => other.isActive && other.id !== loc.id)
+                  .map((other) => ({
+                    id: other.id,
+                    name: other.name,
+                    regionName: other.region.name,
+                    lat: other.lat,
+                    lng: other.lng,
+                  }))}
               />
             </li>
           ))}

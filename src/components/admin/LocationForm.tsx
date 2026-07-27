@@ -225,9 +225,8 @@ export function LocationForm({
         판정 질문 (비워두면 공통 기본값 사용)
         <textarea
           name="judgePrompt"
-          rows={2}
           placeholder="기준 사진과 동일한 장소/사물이 보이는가?"
-          className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm"
+          className="mt-1 h-16 w-full resize-none rounded border border-zinc-300 p-2 text-sm transition-[height] focus:h-32"
         />
       </label>
 

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   getGroupRegionProgress,
   getTeamClosedLocationIds,
+  getTeammatesRegionProgress,
 } from "@/lib/region-progress";
 import { getAppSettings } from "@/lib/settings";
 import { MapScreen } from "@/components/MapScreen";
@@ -27,12 +28,15 @@ export default async function MapPage() {
     failedSubmissions,
     teammateSubmissions,
     settings,
+    teammatesRegionProgress,
   ] = await Promise.all([
     getGroupRegionProgress(group.id),
     getTeamClosedLocationIds(group.teamId),
     prisma.submission.findMany({
       where: { groupId: group.id, aiPassed: true, location: { isActive: true } },
-      include: { location: { include: { mission1: true, mission2: true } } },
+      include: {
+        location: { include: { mission1: true, mission2: true, ingredients: true } },
+      },
     }),
     // 실패 사유도 새로고침 후 계속 보이게 하려면 서버에서 같이 내려줘야 한다 —
     // 통과 여부와 달리 실패는 클라이언트 state에만 있어서 새로고침하면 사라졌음.
@@ -51,7 +55,17 @@ export default async function MapPage() {
       include: { group: true, location: true },
     }),
     getAppSettings(),
+    getTeammatesRegionProgress(group.teamId, group.id),
   ]);
+
+  // 펜션 마커 클릭 시 "우리 조 현황"에 보여줄 지금까지 모은 재료 — 이름 기준 중복 제거.
+  const earnedIngredients = Array.from(
+    new Map(
+      passedSubmissions.flatMap((s) =>
+        s.location.ingredients.map((ing) => [ing.id, { id: ing.id, name: ing.name }] as const),
+      ),
+    ).values(),
+  );
 
   const targetRegionId =
     regionProgress.find((p) => p.status === "current")?.regionId ?? null;
@@ -80,7 +94,6 @@ export default async function MapPage() {
             : null,
           photoUrl: s.photoUrl,
           videoUrl: s.videoUrl,
-          answerCorrect: s.answerCorrect,
           aiReason: s.aiReason,
         },
       ] as const;
@@ -114,11 +127,7 @@ export default async function MapPage() {
       passedByRegionId.set(s.location.regionId, {
         locationId: s.locationId,
         locationName: s.location.name,
-        // PUZZLE 미션은 영상 업로드가 없으니 정답 제출 여부로 완료를 판단한다.
-        completed:
-          resolveMission(s)?.type === "PUZZLE"
-            ? s.answerCorrect
-            : !!s.videoUrl,
+        completed: !!s.videoUrl,
       });
     }
   }
@@ -174,6 +183,8 @@ export default async function MapPage() {
       targetRegionId={targetRegionId}
       targetRegionName={targetRegionName}
       groupSelectionLocked={settings.groupSelectionLocked}
+      earnedIngredients={earnedIngredients}
+      teammatesRegionProgress={teammatesRegionProgress}
     />
   );
 }

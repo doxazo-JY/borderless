@@ -15,7 +15,7 @@ const MISSION_LABEL: Record<string, string> = {
   WORD: "말씀",
   PRAISE: "찬양",
   PRAYER: "기도",
-  PUZZLE: "퀴즈",
+  CONFESSION: "고백",
 };
 
 export default async function TeamPage() {
@@ -328,14 +328,7 @@ export default async function TeamPage() {
                           </a>
                         )}
                         <div className="min-w-0 flex-1">
-                          {mission?.type === "PUZZLE" ? (
-                            <p className="text-zinc-500">
-                              정답:{" "}
-                              {s.answerCorrect
-                                ? s.answerText || "제출됨"
-                                : "미제출"}
-                            </p>
-                          ) : s.videoUrl ? (
+                          {s.videoUrl ? (
                             <video
                               src={s.videoUrl}
                               controls

@@ -7,19 +7,17 @@ const MISSION_LABEL: Record<string, string> = {
   WORD: "말씀",
   PRAISE: "찬양",
   PRAYER: "기도",
-  PUZZLE: "퀴즈",
+  CONFESSION: "고백",
 };
 
 export function MissionEditor({
   missionId,
   currentType,
   currentContent,
-  currentAnswer,
 }: {
   missionId: string;
   currentType: string;
   currentContent: string;
-  currentAnswer?: string | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -58,13 +56,7 @@ export function MissionEditor({
       <input
         name="content"
         defaultValue={currentContent}
-        placeholder="본문/기도 주제/퀴즈 내용 (찬양은 비워둬도 됨)"
-        className="min-w-0 flex-1 rounded border border-zinc-300 p-1 text-[10px]"
-      />
-      <input
-        name="answer"
-        defaultValue={currentAnswer ?? ""}
-        placeholder="정답(퀴즈 전용, 쉼표로 여러 개)"
+        placeholder="본문/기도 주제/고백 지시문 (찬양은 비워둬도 됨)"
         className="min-w-0 flex-1 rounded border border-zinc-300 p-1 text-[10px]"
       />
       <button

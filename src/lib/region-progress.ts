@@ -17,15 +17,15 @@ export async function getGroupRegionProgress(
       orderBy: { position: "asc" },
       include: { region: true },
     }),
-    // 사진 판정 통과만으로는 지역이 "완료"되지 않는다 — 미션 완료(영상 업로드 또는,
-    // PUZZLE 타입이면 정답 제출)까지 끝나야 다음 지역으로 넘어간다(그 전까지 상단
-    // 진행 표시/차례는 이 지역에 그대로 머문다).
+    // 사진 판정 통과만으로는 지역이 "완료"되지 않는다 — 미션 완료(영상 업로드)까지
+    // 끝나야 다음 지역으로 넘어간다(그 전까지 상단 진행 표시/차례는 이 지역에 그대로
+    // 머문다).
     prisma.submission.findMany({
       where: {
         groupId,
         aiPassed: true,
         location: { isActive: true },
-        OR: [{ videoUrl: { not: null } }, { answerCorrect: true }],
+        videoUrl: { not: null },
       },
       select: { location: { select: { regionId: true } } },
     }),
@@ -50,6 +50,24 @@ export async function getCurrentTargetRegionId(
 ): Promise<string | null> {
   const progress = await getGroupRegionProgress(groupId);
   return progress.find((p) => p.status === "current")?.regionId ?? null;
+}
+
+/** 같은 팀의 다른 조들 각각의 지역 진행 상태 — 펜션 마커 클릭 시 현황 패널용 */
+export async function getTeammatesRegionProgress(
+  teamId: string,
+  excludeGroupId: string,
+): Promise<{ groupId: string; displayName: string; progress: RegionProgressItem[] }[]> {
+  const groups = await prisma.group.findMany({
+    where: { teamId, id: { not: excludeGroupId } },
+    orderBy: { groupNumber: "asc" },
+  });
+  return Promise.all(
+    groups.map(async (g) => ({
+      groupId: g.id,
+      displayName: g.displayName,
+      progress: await getGroupRegionProgress(g.id),
+    })),
+  );
 }
 
 /** 같은 팀(다른 조 포함) 기준으로 마감 확인된 location id 집합 */

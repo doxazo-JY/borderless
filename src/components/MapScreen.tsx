@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { KakaoMap } from "@/components/KakaoMap";
 import { LocationPanel, type SubmitResult } from "@/components/LocationPanel";
+import { PensionPanel } from "@/components/PensionPanel";
 import { clearGroup } from "@/app/actions";
 import { teamColor } from "@/lib/team-colors";
 import type { RegionProgressItem } from "@/lib/region-progress";
@@ -22,7 +23,6 @@ export type MapLocationInfo = {
     mission: { type: string; content: string; imageUrl: string | null } | null;
     photoUrl: string | null;
     videoUrl: string | null;
-    answerCorrect: boolean;
     aiReason: string | null;
   } | null;
   regionCompletedElsewhere: {
@@ -37,11 +37,8 @@ export type MapLocationInfo = {
 
 export type PanelStep = "pass" | "video";
 
-// PUZZLE 미션은 영상 업로드가 없으니 정답 제출 여부로 완료를 판단한다.
 function isMissionDone(passedInfo: NonNullable<MapLocationInfo["passedInfo"]>) {
-  return passedInfo.mission?.type === "PUZZLE"
-    ? passedInfo.answerCorrect
-    : !!passedInfo.videoUrl;
+  return !!passedInfo.videoUrl;
 }
 
 function regionInitialResult(
@@ -54,7 +51,6 @@ function regionInitialResult(
       mission: location.passedInfo.mission,
       photoUrl: location.passedInfo.photoUrl,
       videoUrl: location.passedInfo.videoUrl,
-      answerCorrect: location.passedInfo.answerCorrect,
       message: location.passedInfo.aiReason ?? undefined,
     };
   }
@@ -77,6 +73,8 @@ export function MapScreen({
   targetRegionId,
   targetRegionName,
   groupSelectionLocked,
+  earnedIngredients,
+  teammatesRegionProgress,
 }: {
   group: { id: string; displayName: string; teamName: string };
   locations: MapLocationInfo[];
@@ -84,8 +82,15 @@ export function MapScreen({
   targetRegionId: string | null;
   targetRegionName: string | null;
   groupSelectionLocked: boolean;
+  earnedIngredients: { id: string; name: string }[];
+  teammatesRegionProgress: {
+    groupId: string;
+    displayName: string;
+    progress: RegionProgressItem[];
+  }[];
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showPension, setShowPension] = useState(false);
   // 그룹이 위치 패널을 닫고 지도만 보다가 다시 열어도(마커 재클릭) 통과 상태/영상 업로드
   // 여부가 사라지지 않도록, 결과와 현재 탭을 MapScreen 레벨에서 위치별로 들고 있는다.
   const [results, setResults] = useState<Record<string, SubmitResult>>(() => {
@@ -205,21 +210,32 @@ export function MapScreen({
                 return {
                   ...loc,
                   isPassed: passed,
-                  isMissionDone:
-                    passed &&
-                    (r?.mission?.type === "PUZZLE"
-                      ? !!r?.answerCorrect
-                      : !!r?.videoUrl),
+                  isMissionDone: passed && !!r?.videoUrl,
                   isClosed: loc.isClosed,
                   isRelevant,
                 };
               })}
-              onSelectLocation={(id) => setSelectedId(id)}
+              onSelectLocation={(id) => {
+                setShowPension(false);
+                setSelectedId(id);
+              }}
               selectedLocationId={selectedId}
+              onSelectPension={() => {
+                setSelectedId(null);
+                setShowPension(true);
+              }}
+              selectedPension={showPension}
             />
           </div>
 
-          {selectedLocation ? (
+          {showPension ? (
+            <PensionPanel
+              onClose={() => setShowPension(false)}
+              regionProgress={regionProgress}
+              earnedIngredients={earnedIngredients}
+              teammatesRegionProgress={teammatesRegionProgress}
+            />
+          ) : selectedLocation ? (
             <LocationPanel
               // 마커를 닫지 않고 바로 다른 위치로 옮겨 클릭하면 selectedId만 바뀌고
               // 컴포넌트는 재사용돼서, 이전 위치에서 골라둔 사진/영상 파일 같은 내부

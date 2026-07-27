@@ -68,6 +68,8 @@ export async function updateLocationDetails(formData: FormData) {
   const mission2Id = String(formData.get("mission2Id") ?? "") || null;
   const ingredientIds = formData.getAll("ingredientIds").map(String);
   const judgePrompt = String(formData.get("judgePrompt") ?? "").trim();
+  const lat = parseFloat(String(formData.get("lat") ?? ""));
+  const lng = parseFloat(String(formData.get("lng") ?? ""));
 
   await prisma.location.update({
     where: { id },
@@ -77,6 +79,8 @@ export async function updateLocationDetails(formData: FormData) {
       ingredients: { set: ingredientIds.map((ingId) => ({ id: ingId })) },
       ...(name ? { name } : {}),
       ...(judgePrompt ? { judgePrompt } : {}),
+      ...(Number.isFinite(lat) ? { lat } : {}),
+      ...(Number.isFinite(lng) ? { lng } : {}),
     },
   });
 
@@ -105,12 +109,11 @@ export async function toggleLocationActive(formData: FormData) {
   refresh();
 }
 
-const MISSION_TYPES = ["WORD", "PRAISE", "PRAYER", "PUZZLE"] as const;
+const MISSION_TYPES = ["WORD", "PRAISE", "PRAYER", "CONFESSION"] as const;
 
 export async function createMission(formData: FormData) {
   const type = String(formData.get("type") ?? "");
   const content = String(formData.get("content") ?? "").trim();
-  const answer = String(formData.get("answer") ?? "").trim() || null;
   if (!MISSION_TYPES.includes(type as (typeof MISSION_TYPES)[number])) {
     throw new Error("잘못된 미션 유형입니다.");
   }
@@ -125,7 +128,6 @@ export async function createMission(formData: FormData) {
     data: {
       type: type as (typeof MISSION_TYPES)[number],
       content,
-      answer,
       imageUrl,
     },
   });
@@ -154,14 +156,13 @@ export async function updateMission(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const type = String(formData.get("type") ?? "");
   const content = String(formData.get("content") ?? "").trim();
-  const answer = String(formData.get("answer") ?? "").trim() || null;
   if (!id) return;
   if (!MISSION_TYPES.includes(type as (typeof MISSION_TYPES)[number])) {
     throw new Error("잘못된 미션 유형입니다.");
   }
   await prisma.mission.update({
     where: { id },
-    data: { type: type as (typeof MISSION_TYPES)[number], content, answer },
+    data: { type: type as (typeof MISSION_TYPES)[number], content },
   });
   refresh();
 }

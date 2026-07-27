@@ -2,29 +2,51 @@
 
 import { useState } from "react";
 import { updateLocationDetails } from "@/app/admin/[secret]/setup/actions";
+import { loadKakaoServices } from "@/lib/kakao-loader";
+import {
+  LocationMapPicker,
+  type ExistingMapLocation,
+} from "@/components/admin/LocationMapPicker";
 
 type Option = { id: string; label: string };
+
+const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 
 export function LocationDetailsEditor({
   locationId,
   currentName,
+  currentLat,
+  currentLng,
   currentMission1Id,
   currentMission2Id,
   currentIngredientIds,
   currentJudgePrompt,
   missions,
   ingredients,
+  existingLocations = [],
 }: {
   locationId: string;
   currentName: string;
+  currentLat: number;
+  currentLng: number;
   currentMission1Id: string | null;
   currentMission2Id: string | null;
   currentIngredientIds: string[];
   currentJudgePrompt: string;
   missions: Option[];
   ingredients: Option[];
+  existingLocations?: ExistingMapLocation[];
 }) {
   const [open, setOpen] = useState(false);
+  const [lat, setLat] = useState(String(currentLat));
+  const [lng, setLng] = useState(String(currentLng));
+  const [address, setAddress] = useState("");
+  const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "error">(
+    "idle",
+  );
+  const [addressStatus, setAddressStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
 
   if (!open) {
     return (
@@ -33,9 +55,51 @@ export function LocationDetailsEditor({
         onClick={() => setOpen(true)}
         className="text-[10px] text-blue-600 underline"
       >
-        이름/미션/재료/판정질문 수정
+        이름/위치/미션/재료/판정질문 수정
       </button>
     );
+  }
+
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      setGpsStatus("error");
+      return;
+    }
+    setGpsStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLat(position.coords.latitude.toFixed(7));
+        setLng(position.coords.longitude.toFixed(7));
+        setGpsStatus("idle");
+      },
+      () => setGpsStatus("error"),
+    );
+  }
+
+  async function findByAddress() {
+    if (!address.trim() || !KAKAO_APP_KEY) {
+      setAddressStatus("error");
+      return;
+    }
+    setAddressStatus("loading");
+    try {
+      await loadKakaoServices();
+      const geocoder = new window.kakao.maps.services.Geocoder();
+      geocoder.addressSearch(
+        address.trim(),
+        (result: { y: string; x: string }[], status: string) => {
+          if (status === window.kakao.maps.services.Status.OK && result[0]) {
+            setLat(Number(result[0].y).toFixed(7));
+            setLng(Number(result[0].x).toFixed(7));
+            setAddressStatus("idle");
+          } else {
+            setAddressStatus("error");
+          }
+        },
+      );
+    } catch {
+      setAddressStatus("error");
+    }
   }
 
   return (
@@ -53,12 +117,72 @@ export function LocationDetailsEditor({
         placeholder="포인트 이름"
         className="w-full rounded border border-zinc-300 p-1 text-[10px]"
       />
+
+      <div>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-[10px] text-zinc-500">
+            지도를 클릭해서 위치 다시 찍기
+          </p>
+          <button
+            type="button"
+            onClick={useMyLocation}
+            className="shrink-0 rounded border border-zinc-300 px-1.5 py-0.5 text-[10px] font-medium"
+          >
+            {gpsStatus === "loading" ? "확인 중..." : "내 위치로 이동"}
+          </button>
+        </div>
+        <div className="mb-1 flex gap-1">
+          <input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="주소 검색 (선택)"
+            className="flex-1 rounded border border-zinc-300 p-1 text-[10px]"
+          />
+          <button
+            type="button"
+            onClick={findByAddress}
+            className="shrink-0 rounded border border-zinc-300 px-1.5 py-0.5 text-[10px] font-medium"
+          >
+            {addressStatus === "loading" ? "찾는 중..." : "이동"}
+          </button>
+        </div>
+        <LocationMapPicker
+          lat={lat}
+          lng={lng}
+          onPick={(la, ln) => {
+            setLat(la);
+            setLng(ln);
+          }}
+          existingLocations={existingLocations}
+        />
+        <div className="mt-1 grid grid-cols-2 gap-1">
+          <input
+            name="lat"
+            required
+            value={lat}
+            onChange={(e) => setLat(e.target.value)}
+            placeholder="위도"
+            className="rounded border border-zinc-300 p-1 text-[10px]"
+          />
+          <input
+            name="lng"
+            required
+            value={lng}
+            onChange={(e) => setLng(e.target.value)}
+            placeholder="경도"
+            className="rounded border border-zinc-300 p-1 text-[10px]"
+          />
+        </div>
+      </div>
+
       <textarea
         name="judgePrompt"
         defaultValue={currentJudgePrompt}
-        rows={2}
         placeholder="판정 질문"
-        className="w-full rounded border border-zinc-300 p-1 text-[10px]"
+        // 평소엔 2줄만 보이다가, 클릭(포커스)하면 늘어나서 긴 질문도 한눈에
+        // 구분할 수 있게 한다 — 목록에서 여러 개를 스캔할 땐 짧게, 실제로
+        // 수정할 땐 크게.
+        className="h-12 w-full resize-none rounded border border-zinc-300 p-1 text-[10px] transition-[height] focus:h-28"
       />
       <select
         name="mission1Id"

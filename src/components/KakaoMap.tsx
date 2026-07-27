@@ -9,7 +9,7 @@ export type MapLocation = {
   lat: number;
   lng: number;
   isPassed?: boolean; // 사진 판정 통과
-  isMissionDone?: boolean; // 미션 완료(영상 업로드 또는 PUZZLE 정답 제출)까지 끝남
+  isMissionDone?: boolean; // 미션 완료(영상 업로드)까지 끝남
   isClosed?: boolean;
   // 지금 차례인 지역의 미시도 포인트이거나 본인이 통과한 포인트 — 그 외(아직 차례
   // 아닌 지역, 이미 다른 포인트에서 통과해버린 지역의 나머지 포인트)는 흐리게 표시
@@ -122,10 +122,14 @@ export function KakaoMap({
   locations,
   onSelectLocation,
   selectedLocationId,
+  onSelectPension,
+  selectedPension,
 }: {
   locations: MapLocation[];
   onSelectLocation?: (locationId: string) => void;
   selectedLocationId?: string | null;
+  onSelectPension?: () => void;
+  selectedPension?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(() =>
@@ -138,6 +142,15 @@ export function KakaoMap({
   useEffect(() => {
     onSelectLocationRef.current = onSelectLocation;
   }, [onSelectLocation]);
+  const onSelectPensionRef = useRef(onSelectPension);
+  useEffect(() => {
+    onSelectPensionRef.current = onSelectPension;
+  }, [onSelectPension]);
+  // 펜션 마커는 지오코딩이 끝나야 좌표를 알 수 있어(비동기), 클릭 판정용 좌표와
+  // 선택 상태 스타일을 갱신할 DOM을 이 ref들에 담아둔다.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pensionPositionRef = useRef<any>(null);
+  const pensionElRef = useRef<HTMLDivElement | null>(null);
   // 개발 모드 StrictMode가 effect를 두 번 실행해도 지도가 중복 생성되지 않도록 가드
   const mapCreatedRef = useRef(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -280,7 +293,23 @@ export function KakaoMap({
               }
             }
 
-            if (closest && closestDist <= HIT_RADIUS_PX) {
+            // 펜션 마커도 같은 방식(좌표 거리)으로 클릭 판정 — 미션 포인트와 겹쳐
+            // 있으면 더 가까운 쪽이 이긴다.
+            let pensionDist = Infinity;
+            if (pensionPositionRef.current) {
+              const pensionPoint = proj.pointFromCoords(pensionPositionRef.current);
+              pensionDist = Math.hypot(
+                clickPoint.x - pensionPoint.x,
+                clickPoint.y - pensionPoint.y,
+              );
+            }
+
+            if (
+              pensionDist <= HIT_RADIUS_PX &&
+              pensionDist <= closestDist
+            ) {
+              onSelectPensionRef.current?.();
+            } else if (closest && closestDist <= HIT_RADIUS_PX) {
               onSelectLocationRef.current?.(closest.id);
             }
           },
@@ -338,6 +367,11 @@ export function KakaoMap({
                 yAnchor: 0.5,
                 zIndex: 2,
               });
+
+              // 클릭 판정(좌표 거리 계산)과 선택 스타일 갱신(아래 별도 effect)에
+              // 쓸 수 있게 저장해둔다.
+              pensionPositionRef.current = pensionLatLng;
+              pensionElRef.current = pensionEl;
             },
           );
         }
@@ -465,6 +499,18 @@ export function KakaoMap({
       overlaysRef.current.get(loc.id)?.setZIndex(isSelected ? 100 : 1);
     }
   }, [locations, selectedLocationId]);
+
+  useEffect(() => {
+    const pensionEl = pensionElRef.current;
+    if (!pensionEl) return;
+    if (selectedPension) {
+      pensionEl.style.borderColor = "#e1591c";
+      pensionEl.style.boxShadow = "0 0 0 2px #e1591c";
+    } else {
+      pensionEl.style.borderColor = "#1c211d";
+      pensionEl.style.boxShadow = "0 1px 4px rgba(0,0,0,0.35)";
+    }
+  }, [selectedPension]);
 
   // 카카오 지도는 컨테이너 크기가 바뀌어도(예: PC 화면에서 옆에 패널이 열리고 닫히며
   // 지도 폭이 변할 때) 스스로 다시 그리지 않아 빈 회색 영역이 생긴다 —

@@ -12,7 +12,7 @@ const TEAM_NAMES = ["A", "B", "C", "D"] as const;
 const BASE_LAT = 37.73;
 const BASE_LNG = 126.43;
 
-const MISSION_TYPES: MissionType[] = ["WORD", "PRAISE", "PRAYER"];
+const MISSION_TYPES: MissionType[] = ["WORD", "PRAISE", "PRAYER", "CONFESSION"];
 const WORD_CONTENTS = [
   "빌립보서 4:13 암송하기",
   "시편 23:1 묵상 후 나누기",
@@ -24,6 +24,9 @@ const PRAYER_CONTENTS = [
   "이번 수련회 은혜를 위해 함께 기도",
   "가족을 위한 기도제목 나누고 기도",
   "다음 방문 지역 안전을 위해 기도",
+];
+const CONFESSION_CONTENTS = [
+  "'나는 ~입니다' 형식으로 나만의 신앙 고백 한 문장을 완성해 영상에 담아주세요.",
 ];
 
 async function main() {
@@ -82,11 +85,11 @@ async function main() {
   );
 
   function contentFor(type: MissionType, idx: number): string {
-    return type === "WORD"
-      ? WORD_CONTENTS[idx % WORD_CONTENTS.length]
-      : type === "PRAYER"
-        ? PRAYER_CONTENTS[idx % PRAYER_CONTENTS.length]
-        : "";
+    if (type === "WORD") return WORD_CONTENTS[idx % WORD_CONTENTS.length];
+    if (type === "PRAYER") return PRAYER_CONTENTS[idx % PRAYER_CONTENTS.length];
+    if (type === "CONFESSION")
+      return CONFESSION_CONTENTS[idx % CONFESSION_CONTENTS.length];
+    return "";
   }
 
   let locationIndex = 0;
