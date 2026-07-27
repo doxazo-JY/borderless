@@ -17,7 +17,8 @@ export async function createLocation(formData: FormData) {
   const lng = parseFloat(String(formData.get("lng") ?? ""));
   const address = String(formData.get("address") ?? "").trim() || null;
   const judgePromptRaw = String(formData.get("judgePrompt") ?? "").trim();
-  const missionId = String(formData.get("missionId") ?? "") || null;
+  const mission1Id = String(formData.get("mission1Id") ?? "") || null;
+  const mission2Id = String(formData.get("mission2Id") ?? "") || null;
   const ingredientIds = formData.getAll("ingredientIds").map(String);
   const photo = formData.get("referencePhoto");
 
@@ -38,7 +39,8 @@ export async function createLocation(formData: FormData) {
       lng,
       address,
       ...(judgePromptRaw ? { judgePrompt: judgePromptRaw } : {}),
-      missionId,
+      mission1Id,
+      mission2Id,
       referencePhotoUrl,
       ingredients: { connect: ingredientIds.map((id) => ({ id })) },
     },
@@ -62,14 +64,16 @@ export async function updateLocationDetails(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const name = String(formData.get("name") ?? "").trim();
-  const missionId = String(formData.get("missionId") ?? "") || null;
+  const mission1Id = String(formData.get("mission1Id") ?? "") || null;
+  const mission2Id = String(formData.get("mission2Id") ?? "") || null;
   const ingredientIds = formData.getAll("ingredientIds").map(String);
   const judgePrompt = String(formData.get("judgePrompt") ?? "").trim();
 
   await prisma.location.update({
     where: { id },
     data: {
-      missionId,
+      mission1Id,
+      mission2Id,
       ingredients: { set: ingredientIds.map((ingId) => ({ id: ingId })) },
       ...(name ? { name } : {}),
       ...(judgePrompt ? { judgePrompt } : {}),

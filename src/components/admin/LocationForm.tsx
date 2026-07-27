@@ -232,9 +232,24 @@ export function LocationForm({
       </label>
 
       <label className="block text-xs text-zinc-500">
-        연결 미션 (선택, 나중에 채워도 됨)
+        연결 미션 1 (슬롯1 — 먼저 도착한 조, 선택 · 나중에 채워도 됨)
         <select
-          name="missionId"
+          name="mission1Id"
+          className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm"
+        >
+          <option value="">(없음)</option>
+          {missions.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="block text-xs text-zinc-500">
+        연결 미션 2 (슬롯2 — 나중 도착한 조, 선택 · 나중에 채워도 됨)
+        <select
+          name="mission2Id"
           className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm"
         >
           <option value="">(없음)</option>

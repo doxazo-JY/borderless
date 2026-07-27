@@ -19,7 +19,7 @@ export async function POST(
   const { id } = await params;
   const submission = await prisma.submission.findUnique({
     where: { id },
-    include: { location: { include: { mission: true } } },
+    include: { location: { include: { mission1: true, mission2: true } } },
   });
   if (!submission || submission.groupId !== group.id) {
     return NextResponse.json({ ok: false }, { status: 404 });
@@ -34,7 +34,11 @@ export async function POST(
     );
   }
 
-  const acceptedAnswers = (submission.location.mission?.answer ?? "")
+  const mission =
+    submission.missionSlot === 2
+      ? submission.location.mission2
+      : submission.location.mission1;
+  const acceptedAnswers = (mission?.answer ?? "")
     .split(",")
     .map(normalize)
     .filter(Boolean);

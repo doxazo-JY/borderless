@@ -25,7 +25,7 @@ export default async function AdminSetupPage() {
   const [regions, locations, missions, ingredients] = await Promise.all([
     prisma.region.findMany({ orderBy: { name: "asc" } }),
     prisma.location.findMany({
-      include: { region: true, mission: true, ingredients: true },
+      include: { region: true, mission1: true, mission2: true, ingredients: true },
       orderBy: [
         { isActive: "desc" },
         { region: { name: "asc" } },
@@ -199,8 +199,11 @@ export default async function AdminSetupPage() {
                     {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
                   </p>
                   <p className="text-xs text-zinc-500">
-                    캡 {loc.claimedCount}/{loc.capacity} ·{" "}
-                    {loc.mission ? MISSION_LABEL[loc.mission.type] : "미션 없음"}
+                    캡 {loc.claimedCount}/{loc.capacity}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    슬롯1: {loc.mission1 ? MISSION_LABEL[loc.mission1.type] : "없음"} ·
+                    슬롯2: {loc.mission2 ? MISSION_LABEL[loc.mission2.type] : "없음"}
                   </p>
                   <p className="break-keep text-xs text-zinc-500">
                     재료:{" "}
@@ -241,7 +244,8 @@ export default async function AdminSetupPage() {
               <LocationDetailsEditor
                 locationId={loc.id}
                 currentName={loc.name}
-                currentMissionId={loc.missionId}
+                currentMission1Id={loc.mission1Id}
+                currentMission2Id={loc.mission2Id}
                 currentIngredientIds={loc.ingredients.map((ing) => ing.id)}
                 currentJudgePrompt={loc.judgePrompt}
                 missions={missionOptions}

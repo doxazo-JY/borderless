@@ -8,7 +8,8 @@ type Option = { id: string; label: string };
 export function LocationDetailsEditor({
   locationId,
   currentName,
-  currentMissionId,
+  currentMission1Id,
+  currentMission2Id,
   currentIngredientIds,
   currentJudgePrompt,
   missions,
@@ -16,7 +17,8 @@ export function LocationDetailsEditor({
 }: {
   locationId: string;
   currentName: string;
-  currentMissionId: string | null;
+  currentMission1Id: string | null;
+  currentMission2Id: string | null;
   currentIngredientIds: string[];
   currentJudgePrompt: string;
   missions: Option[];
@@ -59,11 +61,23 @@ export function LocationDetailsEditor({
         className="w-full rounded border border-zinc-300 p-1 text-[10px]"
       />
       <select
-        name="missionId"
-        defaultValue={currentMissionId ?? ""}
+        name="mission1Id"
+        defaultValue={currentMission1Id ?? ""}
         className="w-full rounded border border-zinc-300 p-1 text-[10px]"
       >
-        <option value="">(없음)</option>
+        <option value="">슬롯1 (없음)</option>
+        {missions.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+      <select
+        name="mission2Id"
+        defaultValue={currentMission2Id ?? ""}
+        className="w-full rounded border border-zinc-300 p-1 text-[10px]"
+      >
+        <option value="">슬롯2 (없음)</option>
         {missions.map((m) => (
           <option key={m.id} value={m.id}>
             {m.label}

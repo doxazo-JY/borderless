@@ -100,12 +100,12 @@
 ## 5. 데이터 모델 (초안)
 
 - **Region (지역)**: id, name(a/b/c/d), 소속 location(포인트) 목록 (지역당 4개)
-- **Location (장소/방문포인트)**: id, region_id, name, **실제 위도/경도 좌표**(지도 API 표시용), 기준 사진 URL, 판정 프롬프트, 연결된 mission_id, 연결된 ingredient_id 목록, **capacity(기본 2)**, **claimed_count**, **claimed_by(그룹 id 목록)**, **is_active(기본 true)** — false면 참가자 지도/지역 진행 계산/캡 확인/사진 제출 처리에서 전부 제외, 어드민에서는 계속 보이고 다시 켤 수 있음 (2026-07-20 추가)
-- **Mission (미션)**: id, type(말씀/찬양/기도/퀴즈), content(본문/기도 주제/퀴즈 내용, 찬양은 비어있어도 됨), answer(퀴즈 타입 전용, 쉼표로 여러 정답 허용) — 퀴즈(PUZZLE) 타입은 다른 셋과 달리 완료 조건이 영상 업로드가 아니라 정답 텍스트 제출(공백/대소문자 무시하고 비교)이다 (2026-07-21 추가)
+- **Location (장소/방문포인트)**: id, region_id, name, **실제 위도/경도 좌표**(지도 API 표시용), 기준 사진 URL, 판정 프롬프트, **연결된 mission_id 2개(mission1_id/mission2_id, 슬롯1/슬롯2)**, 연결된 ingredient_id 목록, **capacity(기본 2)**, **claimed_count**, **claimed_by(그룹 id 목록)**, **is_active(기본 true)** — false면 참가자 지도/지역 진행 계산/캡 확인/사진 제출 처리에서 전부 제외, 어드민에서는 계속 보이고 다시 켤 수 있음 (2026-07-20 추가)
+- **Mission (미션)**: id, type(말씀/찬양/기도/퀴즈), content(본문/기도 주제/퀴즈 내용, 찬양은 비어있어도 됨), answer(퀴즈 타입 전용, 쉼표로 여러 정답 허용) — 퀴즈(PUZZLE) 타입은 다른 셋과 달리 완료 조건이 영상 업로드가 아니라 정답 텍스트 제출(공백/대소문자 무시하고 비교)이다 (2026-07-21 추가). **포인트 1개당 미션 2개(슬롯1/슬롯2)**를 연결해서, 같은 포인트를 먼저/나중에 통과한 조가 서로 다른 미션(예: 찬양의 다른 파트)을 받는다 — 나중에 각 조 영상을 이어붙여 하나의 완성된 결과물을 만들기 위함 (2026-07-27 추가, 미션 총 개수는 16포인트 × 2 = 32개)
 - **Ingredient (재료)**: id, name — 표시/변형(예: "떡(치즈떡)")도 name 하나에 다 담음, category/variant/is_base는 어느 로직도 참조하지 않는 표시 전용 필드였던 걸 확인하고 2026-07-21에 제거
 - **Team (팀)**: id, name(A/B/C/D)
 - **Group (그룹)**: id, team_id, 조 번호(1/2), member 정보, 방문 완료한 location 목록, 보유 ingredient 목록(그룹 간 교환 반영), 제출한 인증 영상 목록
-- **SubmissionLog (제출 기록)**: group_id, location_id, 업로드 사진, **cap_status(제출 시점 캡 확인 결과: 가능/마감 — 마감이면 AI 호출 자체를 생략)**, AI 판정 결과(통과/실패/사유, cap_status가 마감이면 null), 제출 영상 URL, **grant_status(대기/지급확정)**, **confirmed_by(임원 id)**, **confirmed_at**, timestamp — 결산 영상 제작 및 사후 검수용
+- **SubmissionLog (제출 기록)**: group_id, location_id, 업로드 사진, **cap_status(제출 시점 캡 확인 결과: 가능/마감 — 마감이면 AI 호출 자체를 생략)**, AI 판정 결과(통과/실패/사유, cap_status가 마감이면 null), **mission_slot(AI 판정 통과 시 획득한 미션 슬롯 1 또는 2, 캡 원자적 증가와 같은 시점에 결정, 통과 못 했으면 null)**, 제출 영상 URL, **grant_status(대기/지급확정)**, **confirmed_by(임원 id)**, **confirmed_at**, timestamp — 결산 영상 제작 및 사후 검수용
 
 > **핵심 제약 규칙 (변경됨)**: 캡 차감은 "지급 확정" 시점이 아니라 **AI 판정 통과 시점**에 일어난다. 서버는 사진 업로드 요청이 들어올 때마다 ①해당 location의 claimed_count < capacity(2), ②해당 group이 그 location의 region에서 아직 캡을 잡은 적 없음, 두 조건을 먼저 검증하고, 통과 시에만 AI 판정을 진행한 뒤 AI가 pass를 반환하는 즉시 claimed_count를 원자적으로 +1 한다. 여러 그룹이 동시에 마지막 한 자리를 두고 경합할 수 있으므로 이 증가 연산은 DB 트랜잭션/조건부 업데이트(예: `UPDATE ... SET claimed_count = claimed_count + 1 WHERE claimed_count < capacity`)로 원자적으로 처리해야 한다 (7절 참고). "지급 확정"은 이미 확정된 캡을 실제로 건네줬다는 기록일 뿐, 캡을 재검증하지 않는다.
 

@@ -81,19 +81,28 @@ async function main() {
     ingredientDefs.map((data) => prisma.ingredient.create({ data })),
   );
 
+  function contentFor(type: MissionType, idx: number): string {
+    return type === "WORD"
+      ? WORD_CONTENTS[idx % WORD_CONTENTS.length]
+      : type === "PRAYER"
+        ? PRAYER_CONTENTS[idx % PRAYER_CONTENTS.length]
+        : "";
+  }
+
   let locationIndex = 0;
   for (const region of regions) {
     for (let i = 1; i <= 4; i++) {
-      const missionType = MISSION_TYPES[locationIndex % MISSION_TYPES.length];
-      const content =
-        missionType === "WORD"
-          ? WORD_CONTENTS[locationIndex % WORD_CONTENTS.length]
-          : missionType === "PRAYER"
-            ? PRAYER_CONTENTS[locationIndex % PRAYER_CONTENTS.length]
-            : "";
+      // 같은 포인트에 먼저/나중에 도착하는 두 조가 서로 다른 미션을 받도록
+      // 슬롯마다 다른 타입을 배정한다 (round-robin으로 한 칸씩 밀어서).
+      const mission1Type = MISSION_TYPES[locationIndex % MISSION_TYPES.length];
+      const mission2Type =
+        MISSION_TYPES[(locationIndex + 1) % MISSION_TYPES.length];
 
-      const mission = await prisma.mission.create({
-        data: { type: missionType, content },
+      const mission1 = await prisma.mission.create({
+        data: { type: mission1Type, content: contentFor(mission1Type, locationIndex) },
+      });
+      const mission2 = await prisma.mission.create({
+        data: { type: mission2Type, content: contentFor(mission2Type, locationIndex + 1) },
       });
 
       const ingredient = ingredients[locationIndex % ingredients.length];
@@ -104,7 +113,8 @@ async function main() {
           name: `${region.name}지역 ${i}번 포인트 (더미)`,
           lat: BASE_LAT + (locationIndex % 4) * 0.01,
           lng: BASE_LNG + Math.floor(locationIndex / 4) * 0.01,
-          missionId: mission.id,
+          mission1Id: mission1.id,
+          mission2Id: mission2.id,
           ingredients: { connect: [{ id: ingredient.id }] },
         },
       });

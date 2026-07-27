@@ -11,6 +11,13 @@ import {
   updateGroupMembers,
 } from "./actions";
 
+const MISSION_LABEL: Record<string, string> = {
+  WORD: "말씀",
+  PRAISE: "찬양",
+  PRAYER: "기도",
+  PUZZLE: "퀴즈",
+};
+
 export default async function TeamPage() {
   const [teams, regions, locations, settings, openHelpRequests, resolvedHelpRequests] =
     await Promise.all([
@@ -30,7 +37,8 @@ export default async function TeamPage() {
       prisma.location.findMany({
         include: {
           region: true,
-          mission: true,
+          mission1: true,
+          mission2: true,
           submissions: {
             where: { aiPassed: true },
             include: { group: true },
@@ -276,7 +284,10 @@ export default async function TeamPage() {
                 <p className="mt-2 text-zinc-400">아직 통과한 그룹 없음</p>
               ) : (
                 <div className="mt-2 space-y-2">
-                  {loc.submissions.map((s) => (
+                  {loc.submissions.map((s) => {
+                    const mission =
+                      s.missionSlot === 2 ? loc.mission2 : loc.mission1;
+                    return (
                     <div
                       key={s.id}
                       className="rounded border border-zinc-200 bg-white p-2"
@@ -284,6 +295,12 @@ export default async function TeamPage() {
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-zinc-700">
                           {s.group.displayName}
+                          {s.missionSlot && (
+                            <span className="ml-1 text-[10px] font-normal text-zinc-400">
+                              슬롯{s.missionSlot}
+                              {mission ? ` · ${MISSION_LABEL[mission.type] ?? mission.type}` : ""}
+                            </span>
+                          )}
                         </span>
                         {s.grantStatus === "CONFIRMED" ? (
                           <span className="text-[10px] font-medium text-green-600">
@@ -311,7 +328,7 @@ export default async function TeamPage() {
                           </a>
                         )}
                         <div className="min-w-0 flex-1">
-                          {loc.mission?.type === "PUZZLE" ? (
+                          {mission?.type === "PUZZLE" ? (
                             <p className="text-zinc-500">
                               정답:{" "}
                               {s.answerCorrect
@@ -338,7 +355,8 @@ export default async function TeamPage() {
                         />
                       </form>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

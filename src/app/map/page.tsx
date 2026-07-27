@@ -32,7 +32,7 @@ export default async function MapPage() {
     getTeamClosedLocationIds(group.teamId),
     prisma.submission.findMany({
       where: { groupId: group.id, aiPassed: true, location: { isActive: true } },
-      include: { location: { include: { mission: true } } },
+      include: { location: { include: { mission1: true, mission2: true } } },
     }),
     // 실패 사유도 새로고침 후 계속 보이게 하려면 서버에서 같이 내려줘야 한다 —
     // 통과 여부와 달리 실패는 클라이언트 state에만 있어서 새로고침하면 사라졌음.
@@ -58,24 +58,33 @@ export default async function MapPage() {
   const targetRegionName =
     regionProgress.find((p) => p.status === "current")?.regionName ?? null;
 
+  // 이 제출이 어느 슬롯을 받았는지에 따라 실제로 부여된 미션을 고른다
+  // (같은 포인트라도 먼저/나중에 통과한 조는 서로 다른 미션을 받는다).
+  function resolveMission(s: (typeof passedSubmissions)[number]) {
+    return s.missionSlot === 2 ? s.location.mission2 : s.location.mission1;
+  }
+
   const passedByLocationId = new Map(
-    passedSubmissions.map((s) => [
-      s.locationId,
-      {
-        submissionId: s.id,
-        mission: s.location.mission
-          ? {
-              type: s.location.mission.type,
-              content: s.location.mission.content,
-              imageUrl: s.location.mission.imageUrl,
-            }
-          : null,
-        photoUrl: s.photoUrl,
-        videoUrl: s.videoUrl,
-        answerCorrect: s.answerCorrect,
-        aiReason: s.aiReason,
-      },
-    ]),
+    passedSubmissions.map((s) => {
+      const mission = resolveMission(s);
+      return [
+        s.locationId,
+        {
+          submissionId: s.id,
+          mission: mission
+            ? {
+                type: mission.type,
+                content: mission.content,
+                imageUrl: mission.imageUrl,
+              }
+            : null,
+          photoUrl: s.photoUrl,
+          videoUrl: s.videoUrl,
+          answerCorrect: s.answerCorrect,
+          aiReason: s.aiReason,
+        },
+      ] as const;
+    }),
   );
 
   // 실패는 여러 번 쌓일 수 있으니, locationId당 가장 최근(맨 처음 만나는) 것만 쓴다
@@ -107,7 +116,7 @@ export default async function MapPage() {
         locationName: s.location.name,
         // PUZZLE 미션은 영상 업로드가 없으니 정답 제출 여부로 완료를 판단한다.
         completed:
-          s.location.mission?.type === "PUZZLE"
+          resolveMission(s)?.type === "PUZZLE"
             ? s.answerCorrect
             : !!s.videoUrl,
       });

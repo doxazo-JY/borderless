@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   const location = await prisma.location.findUnique({
     where: { id: locationId },
-    include: { region: true, mission: true },
+    include: { region: true, mission1: true, mission2: true },
   });
   if (!location || !location.isActive) {
     return NextResponse.json({ result: "not_found" }, { status: 404 });
@@ -107,13 +107,18 @@ export async function POST(request: Request) {
     });
   }
 
-  // 5. 통과 시 캡 원자적 차감 (조건부 UPDATE)
-  const updateResult = await prisma.location.updateMany({
-    where: { id: location.id, claimedCount: { lt: location.capacity } },
-    data: { claimedCount: { increment: 1 } },
-  });
+  // 5. 통과 시 캡 원자적 차감 (조건부 UPDATE) — updateMany는 갱신된 행을 반환하지
+  // 않아서 "몇 번째로 자리를 차지했는지"(=미션 슬롯 번호)를 알 수 없다. RETURNING으로
+  // 새 claimedCount를 같은 원자적 UPDATE 안에서 받아와야 동시 요청 사이에서도
+  // 슬롯 번호가 안전하게 결정된다 (capacity가 항상 2라서 새 claimedCount 값이 곧 슬롯 번호).
+  const claimed = await prisma.$queryRaw<{ claimedCount: number }[]>`
+    UPDATE "Location"
+    SET "claimedCount" = "claimedCount" + 1
+    WHERE id = ${location.id} AND "claimedCount" < capacity
+    RETURNING "claimedCount"
+  `;
 
-  if (updateResult.count === 0) {
+  if (claimed.length === 0) {
     // 판정 통과했지만 그 사이 다른 그룹이 마지막 자리를 채감
     await prisma.submission.create({
       data: {
@@ -131,6 +136,9 @@ export async function POST(request: Request) {
     });
   }
 
+  const missionSlot = claimed[0].claimedCount;
+  const mission = missionSlot === 2 ? location.mission2 : location.mission1;
+
   const submission = await prisma.submission.create({
     data: {
       groupId: group.id,
@@ -140,6 +148,7 @@ export async function POST(request: Request) {
       aiPassed: true,
       aiReason: judgement.reason,
       grantStatus: "PENDING",
+      missionSlot,
     },
   });
 
@@ -148,11 +157,11 @@ export async function POST(request: Request) {
     message: judgement.reason,
     submissionId: submission.id,
     photoUrl,
-    mission: location.mission
+    mission: mission
       ? {
-          type: location.mission.type,
-          content: location.mission.content,
-          imageUrl: location.mission.imageUrl,
+          type: mission.type,
+          content: mission.content,
+          imageUrl: mission.imageUrl,
         }
       : null,
   });
