@@ -60,12 +60,22 @@ async function main() {
   );
 
   const ingredientDefs = [
-    { name: "떡(일반떡)" },
-    { name: "떡(치즈떡)" },
-    { name: "대파" },
-    { name: "고추장" },
-    { name: "치즈" },
-    { name: "김가루" },
+    { name: "라면사리" },
+    { name: "쫄면사리" },
+    { name: "납작당면" },
+    { name: "우동사리" },
+    { name: "치즈떡" },
+    { name: "고구마떡" },
+    { name: "쌀떡" },
+    { name: "밀떡" },
+    { name: "사각어묵" },
+    { name: "꼬치어묵" },
+    { name: "봉어묵" },
+    { name: "모둠어묵" },
+    { name: "모짜렐라(치즈)" },
+    { name: "비엔나" },
+    { name: "만두" },
+    { name: "김말이" },
   ];
   const ingredients = await Promise.all(
     ingredientDefs.map((data) => prisma.ingredient.create({ data })),
@@ -102,11 +112,21 @@ async function main() {
     }
   }
 
-  // 더미 지역 방문 순서: 전 그룹 a->b->c->d (실제 순서는 다른 임원 확정 후 admin에서 재배정)
+  // 실제 지역 방문 순서 (임원 확정, 2026-07-27): 1조는 d->b->a->c, 2조는 c->a->b->d
+  const regionIdByName = new Map(regions.map((r) => [r.name, r.id]));
+  const ORDER_BY_GROUP_NUMBER: Record<number, string[]> = {
+    1: ["d", "b", "a", "c"],
+    2: ["c", "a", "b", "d"],
+  };
   for (const group of groups) {
-    for (let position = 0; position < regions.length; position++) {
+    const order = ORDER_BY_GROUP_NUMBER[group.groupNumber];
+    for (let position = 0; position < order.length; position++) {
       await prisma.groupRegionOrder.create({
-        data: { groupId: group.id, regionId: regions[position].id, position },
+        data: {
+          groupId: group.id,
+          regionId: regionIdByName.get(order[position])!,
+          position,
+        },
       });
     }
   }
