@@ -58,7 +58,7 @@ export default async function AdminSetupPage() {
       {/* 미션 */}
       <section>
         <h2 className="mb-2 text-sm font-bold text-zinc-500">미션</h2>
-        <ul className="mb-3 grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-1">
+        <ul className="mb-3 grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-4">
           {missions.map((m) => (
             <li
               key={m.id}

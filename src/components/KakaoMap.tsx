@@ -27,6 +27,10 @@ declare global {
 const SCRIPT_ID = "kakao-maps-sdk";
 const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 const COMPASS_PREFERENCE_KEY = "borderless-compass-enabled";
+// 숙소(펜션) — 미션 포인트가 아니라 참가자가 위치를 가늠할 수 있게 항상 표시되는
+// 참고용 마커. DB Location으로 넣지 않는다(지역당 4곳 카운팅 로직과 무관해야 함).
+const PENSION_ADDRESS = "인천 강화군 송해면 오류내길99번길 40-7";
+const PENSION_LABEL = "숙소";
 
 // 범례가 실제 마커(색 원 + 흰 테두리 + 알파벳/기호)와 똑같이 보이도록, 별도 점 대신
 // 실제 마커를 축소한 모양을 그대로 그려서 보여준다.
@@ -284,6 +288,58 @@ export function KakaoMap({
 
         if (locations.length > 0) {
           map.setBounds(bounds);
+        }
+
+        // 숙소(펜션) 마커 — 주소를 지오코딩해서 항상 표시되는 참고용 핀 하나만 추가.
+        // 실패해도(네트워크 등) 지도 기능 자체엔 영향 없이 조용히 넘어간다. bounds는
+        // 일부러 건드리지 않는다 — 리허설처럼 미션 포인트가 실제 숙소(강화도)와 멀리
+        // 떨어진 곳에 있으면, 펜션까지 포함하려고 지도가 그 거리만큼 확 줌아웃돼서
+        // 정작 미션 포인트들이 안 보이게 된다. 펜션 마커는 그 좌표에 얹혀만 있고,
+        // 지도 화면 범위는 항상 미션 포인트 기준으로만 잡는다.
+        if (window.kakao.maps.services) {
+          const pensionGeocoder = new window.kakao.maps.services.Geocoder();
+          pensionGeocoder.addressSearch(
+            PENSION_ADDRESS,
+            (result: { y: string; x: string }[], geocodeStatus: string) => {
+              if (
+                geocodeStatus !== window.kakao.maps.services.Status.OK ||
+                !result[0]
+              ) {
+                return;
+              }
+              const pensionLatLng = new window.kakao.maps.LatLng(
+                Number(result[0].y),
+                Number(result[0].x),
+              );
+
+              const pensionEl = document.createElement("div");
+              Object.assign(pensionEl.style, {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "26px",
+                height: "26px",
+                borderRadius: "8px",
+                border: "1.5px solid #1c211d",
+                background: "#ffffff",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
+                color: "#1c211d",
+                pointerEvents: "none",
+              });
+              pensionEl.title = PENSION_LABEL;
+              pensionEl.innerHTML =
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>';
+
+              new window.kakao.maps.CustomOverlay({
+                position: pensionLatLng,
+                content: pensionEl,
+                map,
+                xAnchor: 0.5,
+                yAnchor: 0.5,
+                zIndex: 2,
+              });
+            },
+          );
         }
 
         if (navigator.geolocation) {

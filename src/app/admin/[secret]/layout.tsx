@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { AdminNav } from "@/components/admin/AdminNav";
 
 export default async function AdminLayout({
   children,
@@ -17,14 +17,7 @@ export default async function AdminLayout({
 
   return (
     <div className="flex flex-1 flex-col">
-      <nav className="sticky top-0 z-30 flex flex-wrap gap-4 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-sm">
-        <Link href={`${base}/setup`} className="underline underline-offset-2">
-          설정
-        </Link>
-        <Link href={`${base}/team`} className="underline underline-offset-2">
-          팀
-        </Link>
-      </nav>
+      <AdminNav base={base} />
       {children}
     </div>
   );
