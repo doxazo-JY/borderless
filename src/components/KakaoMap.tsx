@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 export type MapLocation = {
   id: string;
   name: string;
+  regionId: string;
   regionName: string;
   lat: number;
   lng: number;
@@ -31,6 +32,61 @@ const COMPASS_PREFERENCE_KEY = "borderless-compass-enabled";
 // 참고용 마커. DB Location으로 넣지 않는다(지역당 4곳 카운팅 로직과 무관해야 함).
 const PENSION_ADDRESS = "인천 강화군 송해면 오류내길99번길 40-7";
 const PENSION_LABEL = "숙소";
+
+type LatLng = { lat: number; lng: number };
+
+// 지역 경계선 — 그 지역 포인트들의 실제 좌표를 감싸는 다각형을 자동 계산해서
+// 그린다(손으로 경계 좌표를 등록할 필요 없음). 점이 3개 미만이면 convex hull이
+// 의미가 없어 그대로 반환한다(1개는 원으로, 2개는 선으로 별도 처리).
+function convexHull(points: LatLng[]): LatLng[] {
+  if (points.length < 3) return points;
+  const sorted = [...points].sort((a, b) => a.lng - b.lng || a.lat - b.lat);
+  const cross = (o: LatLng, a: LatLng, b: LatLng) =>
+    (a.lng - o.lng) * (b.lat - o.lat) - (a.lat - o.lat) * (b.lng - o.lng);
+  const lower: LatLng[] = [];
+  for (const p of sorted) {
+    while (
+      lower.length >= 2 &&
+      cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0
+    ) {
+      lower.pop();
+    }
+    lower.push(p);
+  }
+  const upper: LatLng[] = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i];
+    while (
+      upper.length >= 2 &&
+      cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0
+    ) {
+      upper.pop();
+    }
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+// 경계선이 마커 정중앙을 스치듯 지나가면 답답해 보여서, 무게중심 기준으로 각
+// 꼭짓점을 살짝(약 35m) 바깥으로 밀어낸다.
+function padHull(hull: LatLng[], paddingDeg = 0.00035): LatLng[] {
+  if (hull.length === 0) return hull;
+  const centroid = {
+    lat: hull.reduce((s, p) => s + p.lat, 0) / hull.length,
+    lng: hull.reduce((s, p) => s + p.lng, 0) / hull.length,
+  };
+  return hull.map((p) => {
+    const dx = p.lng - centroid.lng;
+    const dy = p.lat - centroid.lat;
+    const dist = Math.hypot(dx, dy) || 1;
+    return {
+      lat: p.lat + (dy / dist) * paddingDeg,
+      lng: p.lng + (dx / dist) * paddingDeg,
+    };
+  });
+}
 
 // 범례가 실제 마커(색 원 + 흰 테두리 + 알파벳/기호)와 똑같이 보이도록, 별도 점 대신
 // 실제 마커를 축소한 모양을 그대로 그려서 보여준다.
@@ -124,12 +180,14 @@ export function KakaoMap({
   selectedLocationId,
   onSelectPension,
   selectedPension,
+  targetRegionId,
 }: {
   locations: MapLocation[];
   onSelectLocation?: (locationId: string) => void;
   selectedLocationId?: string | null;
   onSelectPension?: () => void;
   selectedPension?: boolean;
+  targetRegionId?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(() =>
@@ -228,6 +286,66 @@ export function KakaoMap({
           level: 6,
         });
         mapInstanceRef.current = map;
+
+        // 지역 경계선 — 같은 지역 포인트들을 감싸는 다각형을 좌표로부터 자동 계산해서
+        // 그린다. 지금 차례인 지역만 강조하고 나머지는 옅게 표시하되(마커 흐림
+        // 처리와 같은 규칙), 강조색은 액센트 오렌지 대신 마커의 "미시도" 기본색과
+        // 같은 파랑을 쓴다 — 오렌지는 마커에서 이미 "판정 통과·완료 대기"란 뜻으로
+        // 쓰이고 있어서, 지역 경계에 또 쓰면 상태 표시랑 헷갈릴 수 있다.
+        const byRegion = new Map<string, LatLng[]>();
+        for (const loc of locations) {
+          const list = byRegion.get(loc.regionId) ?? [];
+          list.push({ lat: loc.lat, lng: loc.lng });
+          byRegion.set(loc.regionId, list);
+        }
+        for (const [regionId, points] of byRegion) {
+          if (points.length === 0) continue;
+          const isTarget = regionId === targetRegionId;
+          const strokeColor = isTarget ? "#2563eb" : "#6b7280";
+          const strokeWeight = isTarget ? 2.5 : 1.5;
+          const strokeOpacity = isTarget ? 0.85 : 0.65;
+
+          if (points.length === 1) {
+            new window.kakao.maps.Circle({
+              center: new window.kakao.maps.LatLng(points[0].lat, points[0].lng),
+              radius: 35,
+              strokeWeight,
+              strokeColor,
+              strokeOpacity,
+              strokeStyle: "shortdash",
+              fillOpacity: 0,
+              map,
+            });
+            continue;
+          }
+
+          const hullPoints =
+            points.length === 2 ? points : padHull(convexHull(points));
+          const path = hullPoints.map(
+            (p) => new window.kakao.maps.LatLng(p.lat, p.lng),
+          );
+          if (points.length === 2) {
+            new window.kakao.maps.Polyline({
+              path,
+              strokeWeight: strokeWeight + 2,
+              strokeColor,
+              strokeOpacity,
+              strokeStyle: "shortdash",
+              map,
+            });
+          } else {
+            new window.kakao.maps.Polygon({
+              path,
+              strokeWeight,
+              strokeColor,
+              strokeOpacity,
+              strokeStyle: "shortdash",
+              fillColor: strokeColor,
+              fillOpacity: isTarget ? 0.05 : 0.02,
+              map,
+            });
+          }
+        }
 
         // 마커는 시각적 표시용(CustomOverlay)으로만 두고, 클릭 판정은 지도 자체의
         // click 이벤트(가장 기본적이고 안정적인 기능) + 좌표 거리 계산으로 직접 처리한다.

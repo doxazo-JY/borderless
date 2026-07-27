@@ -180,6 +180,14 @@ export async function createIngredient(formData: FormData) {
   refresh();
 }
 
+export async function updateIngredient(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!id || !name) return;
+  await prisma.ingredient.update({ where: { id }, data: { name } });
+  refresh();
+}
+
 export async function deleteIngredient(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;

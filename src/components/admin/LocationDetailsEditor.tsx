@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { updateLocationDetails } from "@/app/admin/[secret]/setup/actions";
 import { loadKakaoServices } from "@/lib/kakao-loader";
 import {
@@ -47,6 +47,46 @@ export function LocationDetailsEditor({
   const [addressStatus, setAddressStatus] = useState<
     "idle" | "loading" | "error"
   >("idle");
+
+  // 좌표(직접 입력/지도 클릭/GPS/주소 검색으로 바뀐 값)를 역지오코딩해서 "주소 검색"
+  // 입력창 자체에 현재 주소를 채워둔다 — 등록된 address 필드는 GPS로 찍은 포인트엔
+  // 아예 없는 경우가 많고 오래돼서 실제 좌표와 어긋날 수도 있어서, 항상 지금 좌표
+  // 기준으로 새로 구한다. 타이핑 중 매 글자마다 요청하지 않도록 살짝 debounce.
+  useEffect(() => {
+    if (!open || !KAKAO_APP_KEY) return;
+    const la = Number(lat);
+    const ln = Number(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await loadKakaoServices();
+        const geocoder = new window.kakao.maps.services.Geocoder();
+        geocoder.coord2Address(
+          ln,
+          la,
+          (
+            result: {
+              address?: { address_name: string };
+              road_address?: { address_name: string };
+            }[],
+            status: string,
+          ) => {
+            if (status === window.kakao.maps.services.Status.OK && result[0]) {
+              setAddress(
+                result[0].road_address?.address_name ??
+                  result[0].address?.address_name ??
+                  "",
+              );
+            }
+          },
+        );
+      } catch {
+        // 조용히 무시 — 주소칸이 그냥 안 채워질 뿐, 위/경도 직접 수정은 계속 가능
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [open, lat, lng]);
 
   if (!open) {
     return (

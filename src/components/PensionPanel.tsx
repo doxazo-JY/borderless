@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import type { RegionProgressItem } from "@/lib/region-progress";
 
 const STATUS_LABEL: Record<RegionProgressItem["status"], string> = {
@@ -62,15 +61,7 @@ export function PensionPanel({
         </section>
 
         <section>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="label-tech text-[10px] text-accent">모은 재료</p>
-            <Link
-              href="/inventory"
-              className="label-tech text-[10px] text-muted underline underline-offset-2"
-            >
-              인벤토리 전체보기
-            </Link>
-          </div>
+          <p className="label-tech mb-2 text-[10px] text-accent">모은 재료</p>
           {earnedIngredients.length > 0 ? (
             <ul className="flex flex-wrap gap-2">
               {earnedIngredients.map((ing) => (

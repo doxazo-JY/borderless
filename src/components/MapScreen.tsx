@@ -225,6 +225,7 @@ export function MapScreen({
                 setShowPension(true);
               }}
               selectedPension={showPension}
+              targetRegionId={targetRegionId}
             />
           </div>
 

@@ -53,11 +53,12 @@ export function MissionEditor({
           </option>
         ))}
       </select>
-      <input
+      <textarea
         name="content"
         defaultValue={currentContent}
-        placeholder="본문/기도 주제/고백 지시문 (찬양은 비워둬도 됨)"
-        className="min-w-0 flex-1 rounded border border-zinc-300 p-1 text-[10px]"
+        placeholder="본문/기도 주제/고백 지시문 (찬양은 비워둬도 됨). Enter로 줄바꿈 가능"
+        rows={2}
+        className="h-12 min-w-0 flex-1 resize-y rounded border border-zinc-300 p-1 text-[10px]"
       />
       <button
         type="submit"

@@ -4,6 +4,7 @@ import { LocationPhotoUpload } from "@/components/admin/LocationPhotoUpload";
 import { LocationDetailsEditor } from "@/components/admin/LocationDetailsEditor";
 import { MissionEditor } from "@/components/admin/MissionEditor";
 import { MissionPhotoUpload } from "@/components/admin/MissionPhotoUpload";
+import { IngredientEditor } from "@/components/admin/IngredientEditor";
 import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
 import {
   createIngredient,
@@ -56,7 +57,7 @@ export default async function AdminSetupPage() {
       ],
     }),
     prisma.mission.findMany(),
-    prisma.ingredient.findMany(),
+    prisma.ingredient.findMany({ orderBy: { id: "asc" } }),
   ]);
 
   missions.sort((a, b) => {
@@ -102,7 +103,7 @@ export default async function AdminSetupPage() {
                     className="h-10 w-10 shrink-0 rounded object-cover"
                   />
                 )}
-                <span className="min-w-0 flex-1 break-keep">
+                <span className="min-w-0 flex-1 break-keep whitespace-pre-line">
                   <span className="font-medium">
                     {MISSION_LABEL[m.type] ?? m.type}
                   </span>{" "}
@@ -136,10 +137,11 @@ export default async function AdminSetupPage() {
             <option value="PRAYER">기도</option>
             <option value="CONFESSION">고백</option>
           </select>
-          <input
+          <textarea
             name="content"
-            placeholder="본문/기도 주제/고백 지시문 (찬양은 비워둬도 됨)"
-            className="flex-1 rounded border border-zinc-300 p-2 text-sm"
+            placeholder="본문/기도 주제/고백 지시문 (찬양은 비워둬도 됨). Enter로 줄바꿈 가능"
+            rows={2}
+            className="h-16 flex-1 resize-y rounded border border-zinc-300 p-2 text-sm"
           />
           <input
             type="file"
@@ -164,12 +166,15 @@ export default async function AdminSetupPage() {
               className="flex items-center justify-between rounded border border-zinc-200 p-2 text-sm"
             >
               <span>{ing.name}</span>
-              <form action={deleteIngredient}>
-                <input type="hidden" name="id" value={ing.id} />
-                <ConfirmDeleteButton
-                  confirmText={`"${ing.name}" 재료를 삭제하시겠습니까?`}
-                />
-              </form>
+              <div className="flex items-center gap-2">
+                <IngredientEditor ingredientId={ing.id} currentName={ing.name} />
+                <form action={deleteIngredient}>
+                  <input type="hidden" name="id" value={ing.id} />
+                  <ConfirmDeleteButton
+                    confirmText={`"${ing.name}" 재료를 삭제하시겠습니까?`}
+                  />
+                </form>
+              </div>
             </li>
           ))}
         </ul>

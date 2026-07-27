@@ -127,7 +127,7 @@ function PassCard({
               className="mt-2 max-h-56 w-full rounded-md border border-line object-contain bg-paper"
             />
           )}
-          <p className="mt-1 text-base leading-snug font-bold text-ink">
+          <p className="mt-1 text-base leading-snug font-bold whitespace-pre-line text-ink">
             {mission?.content || "자유곡으로 찬양해주세요."}
           </p>
         </div>
