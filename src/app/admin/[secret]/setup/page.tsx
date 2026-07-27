@@ -20,6 +20,29 @@ const MISSION_LABEL: Record<string, string> = {
   PRAYER: "기도",
   CONFESSION: "고백",
 };
+const MISSION_TYPE_ORDER = ["WORD", "PRAISE", "PRAYER", "CONFESSION"];
+
+// 문자열 그대로 비교하면 "1-24"가 "121-144"보다 뒤로 밀리는 등 숫자가 포함된
+// 미션 문구(예: 시편 절 구간)가 크기 순이 아니라 글자 순으로 정렬된다 — 문구에
+// 담긴 숫자 부분만 실제 크기로 비교하는 natural sort로 바로잡는다.
+function naturalCompare(a: string, b: string): number {
+  const chunks = (s: string) => s.match(/\d+|\D+/g) ?? [];
+  const ca = chunks(a);
+  const cb = chunks(b);
+  const len = Math.max(ca.length, cb.length);
+  for (let i = 0; i < len; i++) {
+    const x = ca[i] ?? "";
+    const y = cb[i] ?? "";
+    if (x === y) continue;
+    if (/^\d+$/.test(x) && /^\d+$/.test(y)) {
+      const diff = Number(x) - Number(y);
+      if (diff !== 0) return diff;
+    } else {
+      return x < y ? -1 : 1;
+    }
+  }
+  return 0;
+}
 
 export default async function AdminSetupPage() {
   const [regions, locations, missions, ingredients] = await Promise.all([
@@ -32,9 +55,15 @@ export default async function AdminSetupPage() {
         { name: "asc" },
       ],
     }),
-    prisma.mission.findMany({ orderBy: [{ type: "asc" }, { content: "asc" }] }),
+    prisma.mission.findMany(),
     prisma.ingredient.findMany(),
   ]);
+
+  missions.sort((a, b) => {
+    const t =
+      MISSION_TYPE_ORDER.indexOf(a.type) - MISSION_TYPE_ORDER.indexOf(b.type);
+    return t !== 0 ? t : naturalCompare(a.content, b.content);
+  });
 
   const missionOptions = missions.map((m) => ({
     id: m.id,
