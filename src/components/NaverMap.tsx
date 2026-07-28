@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { loadNaverMaps } from "@/lib/naver-loader";
 
 export type MapLocation = {
   id: string;
@@ -19,19 +20,20 @@ export type MapLocation = {
 
 declare global {
   interface Window {
-    // Kakao Maps SDK는 공식 타입 제공을 안 함
+    // Naver Maps SDK는 공식 타입 제공을 안 함
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    kakao: any;
+    naver: any;
   }
 }
 
-const SCRIPT_ID = "kakao-maps-sdk";
-const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+const NAVER_MAP_CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
 const COMPASS_PREFERENCE_KEY = "borderless-compass-enabled";
 // 숙소(펜션) — 미션 포인트가 아니라 참가자가 위치를 가늠할 수 있게 항상 표시되는
 // 참고용 마커. DB Location으로 넣지 않는다(지역당 4곳 카운팅 로직과 무관해야 함).
 const PENSION_ADDRESS = "인천 강화군 송해면 오류내길99번길 40-7";
 const PENSION_LABEL = "숙소";
+// 지도 초기 줌 — Naver 줌은 숫자가 클수록 확대(Kakao level과 반대 방향)
+const MAP_ZOOM = 14;
 
 type LatLng = { lat: number; lng: number };
 
@@ -174,7 +176,7 @@ function getHeadingFromEvent(event: any): number | null {
   return null;
 }
 
-export function KakaoMap({
+export function NaverMap({
   locations,
   onSelectLocation,
   selectedLocationId,
@@ -191,7 +193,7 @@ export function KakaoMap({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(() =>
-    KAKAO_APP_KEY ? "loading" : "error",
+    NAVER_MAP_CLIENT_ID ? "loading" : "error",
   );
   const [showLegend, setShowLegend] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -216,9 +218,9 @@ export function KakaoMap({
   // 통과/마감 상태가 바뀔 때마다 지도(및 마커) 전체를 새로 만들지 않고, 이미 만들어둔
   // 마커 DOM만 찾아서 색을 갱신하기 위한 위치별 참조
   const pinElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
-  // 선택된 마커를 시각적으로 맨 앞에 오게 하기 위한 오버레이 참조
+  // 선택된 마커를 시각적으로 맨 앞에 오게 하기 위한 마커 참조
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const overlaysRef = useRef<Map<string, any>>(new Map());
+  const markersRef = useRef<Map<string, any>>(new Map());
   // 내 위치 마커의 방향(나침반) 부채꼴 — DOM을 직접 회전시켜야 해서 ref로 들고 있는다
   const compassConeRef = useRef<HTMLDivElement | null>(null);
   const compassAttachedRef = useRef(false);
@@ -264,346 +266,343 @@ export function KakaoMap({
   }
 
   useEffect(() => {
-    if (!KAKAO_APP_KEY) {
-      console.error("NEXT_PUBLIC_KAKAO_JS_KEY가 설정되지 않았습니다.");
+    if (!NAVER_MAP_CLIENT_ID) {
+      console.error("NEXT_PUBLIC_NAVER_MAP_CLIENT_ID가 설정되지 않았습니다.");
       return;
     }
 
+    let cancelled = false;
+
     function initMap() {
-      window.kakao.maps.load(() => {
-        if (!containerRef.current) return;
-        if (mapCreatedRef.current) return;
-        mapCreatedRef.current = true;
+      if (cancelled) return;
+      if (!containerRef.current) return;
+      if (mapCreatedRef.current) return;
+      mapCreatedRef.current = true;
 
-        const bounds = new window.kakao.maps.LatLngBounds();
-        const center =
-          locations.length > 0
-            ? new window.kakao.maps.LatLng(locations[0].lat, locations[0].lng)
-            : new window.kakao.maps.LatLng(37.73, 126.43);
+      const naver = window.naver;
+      const center =
+        locations.length > 0
+          ? new naver.maps.LatLng(locations[0].lat, locations[0].lng)
+          : new naver.maps.LatLng(37.73, 126.43);
 
-        const map = new window.kakao.maps.Map(containerRef.current, {
-          center,
-          level: 6,
+      const map = new naver.maps.Map(containerRef.current, {
+        center,
+        zoom: MAP_ZOOM,
+      });
+      mapInstanceRef.current = map;
+
+      // 지역 경계선 — 같은 지역 포인트들을 감싸는 다각형을 좌표로부터 자동 계산해서
+      // 그린다. 지금 차례인 지역만 강조하고 나머지는 옅게 표시하되(마커 흐림
+      // 처리와 같은 규칙), 강조색은 액센트 오렌지 대신 마커의 "미시도" 기본색과
+      // 같은 파랑을 쓴다 — 오렌지는 마커에서 이미 "판정 통과·완료 대기"란 뜻으로
+      // 쓰이고 있어서, 지역 경계에 또 쓰면 상태 표시랑 헷갈릴 수 있다.
+      const byRegion = new Map<string, LatLng[]>();
+      for (const loc of locations) {
+        const list = byRegion.get(loc.regionId) ?? [];
+        list.push({ lat: loc.lat, lng: loc.lng });
+        byRegion.set(loc.regionId, list);
+      }
+      for (const [regionId, points] of byRegion) {
+        if (points.length === 0) continue;
+        const isTarget = regionId === targetRegionId;
+        const strokeColor = isTarget ? "#2563eb" : "#6b7280";
+        const strokeWeight = isTarget ? 2.5 : 1.5;
+        const strokeOpacity = isTarget ? 0.85 : 0.65;
+
+        if (points.length === 1) {
+          new naver.maps.Circle({
+            map,
+            center: new naver.maps.LatLng(points[0].lat, points[0].lng),
+            radius: 35,
+            strokeWeight,
+            strokeColor,
+            strokeOpacity,
+            strokeStyle: "shortdash",
+            fillOpacity: 0,
+          });
+          continue;
+        }
+
+        const hullPoints =
+          points.length === 2 ? points : padHull(convexHull(points));
+        const path = hullPoints.map(
+          (p) => new naver.maps.LatLng(p.lat, p.lng),
+        );
+        if (points.length === 2) {
+          new naver.maps.Polyline({
+            map,
+            path,
+            strokeWeight: strokeWeight + 2,
+            strokeColor,
+            strokeOpacity,
+            strokeStyle: "shortdash",
+          });
+        } else {
+          new naver.maps.Polygon({
+            map,
+            paths: [path],
+            strokeWeight,
+            strokeColor,
+            strokeOpacity,
+            strokeStyle: "shortdash",
+            fillColor: strokeColor,
+            fillOpacity: isTarget ? 0.05 : 0.02,
+          });
+        }
+      }
+
+      // 마커는 시각적 표시용(HTML 아이콘)으로만 두고, 클릭 판정은 지도 자체의
+      // click 이벤트(가장 기본적이고 안정적인 기능) + 좌표 거리 계산으로 직접 처리한다.
+      // 개별 마커의 자체 클릭 판정은 카카오 지도에서 내부 드래그 판정과 얽혀 씹히는
+      // 문제가 있어 신뢰할 수 없었던 방식을 그대로 이어받아, 네이버 전환 후에도
+      // 동일한 방식을 유지한다(검증된 동작을 굳이 바꾸지 않음).
+      const bounds =
+        locations.length > 0
+          ? new naver.maps.LatLngBounds(
+              new naver.maps.LatLng(locations[0].lat, locations[0].lng),
+              new naver.maps.LatLng(locations[0].lat, locations[0].lng),
+            )
+          : null;
+
+      locations.forEach((loc) => {
+        const position = new naver.maps.LatLng(loc.lat, loc.lng);
+        bounds?.extend(position);
+
+        const pinEl = document.createElement("div");
+        Object.assign(pinEl.style, {
+          width: "24px",
+          height: "24px",
+          borderRadius: "50%",
+          border: "2px solid white",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+          pointerEvents: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "10px",
+          fontWeight: "bold",
+          color: "white",
         });
-        mapInstanceRef.current = map;
+        applyPinStatus(pinEl, loc, false);
+        pinElsRef.current.set(loc.id, pinEl);
 
-        // 지역 경계선 — 같은 지역 포인트들을 감싸는 다각형을 좌표로부터 자동 계산해서
-        // 그린다. 지금 차례인 지역만 강조하고 나머지는 옅게 표시하되(마커 흐림
-        // 처리와 같은 규칙), 강조색은 액센트 오렌지 대신 마커의 "미시도" 기본색과
-        // 같은 파랑을 쓴다 — 오렌지는 마커에서 이미 "판정 통과·완료 대기"란 뜻으로
-        // 쓰이고 있어서, 지역 경계에 또 쓰면 상태 표시랑 헷갈릴 수 있다.
-        const byRegion = new Map<string, LatLng[]>();
+        const marker = new naver.maps.Marker({
+          position,
+          map,
+          icon: {
+            content: pinEl,
+            size: new naver.maps.Size(24, 24),
+            anchor: new naver.maps.Point(12, 12),
+          },
+          clickable: false,
+          zIndex: 1,
+        });
+        markersRef.current.set(loc.id, marker);
+      });
+
+      const HIT_RADIUS_PX = 22;
+      naver.maps.Event.addListener(map, "click", (e: { coord: unknown }) => {
+        const proj = map.getProjection();
+        const clickPoint = proj.fromCoordToOffset(e.coord);
+
+        let closest: (typeof locations)[number] | null = null;
+        let closestDist = Infinity;
         for (const loc of locations) {
-          const list = byRegion.get(loc.regionId) ?? [];
-          list.push({ lat: loc.lat, lng: loc.lng });
-          byRegion.set(loc.regionId, list);
-        }
-        for (const [regionId, points] of byRegion) {
-          if (points.length === 0) continue;
-          const isTarget = regionId === targetRegionId;
-          const strokeColor = isTarget ? "#2563eb" : "#6b7280";
-          const strokeWeight = isTarget ? 2.5 : 1.5;
-          const strokeOpacity = isTarget ? 0.85 : 0.65;
-
-          if (points.length === 1) {
-            new window.kakao.maps.Circle({
-              center: new window.kakao.maps.LatLng(points[0].lat, points[0].lng),
-              radius: 35,
-              strokeWeight,
-              strokeColor,
-              strokeOpacity,
-              strokeStyle: "shortdash",
-              fillOpacity: 0,
-              map,
-            });
-            continue;
-          }
-
-          const hullPoints =
-            points.length === 2 ? points : padHull(convexHull(points));
-          const path = hullPoints.map(
-            (p) => new window.kakao.maps.LatLng(p.lat, p.lng),
+          const locPoint = proj.fromCoordToOffset(
+            new naver.maps.LatLng(loc.lat, loc.lng),
           );
-          if (points.length === 2) {
-            new window.kakao.maps.Polyline({
-              path,
-              strokeWeight: strokeWeight + 2,
-              strokeColor,
-              strokeOpacity,
-              strokeStyle: "shortdash",
-              map,
-            });
-          } else {
-            new window.kakao.maps.Polygon({
-              path,
-              strokeWeight,
-              strokeColor,
-              strokeOpacity,
-              strokeStyle: "shortdash",
-              fillColor: strokeColor,
-              fillOpacity: isTarget ? 0.05 : 0.02,
-              map,
-            });
+          const dist = Math.hypot(
+            clickPoint.x - locPoint.x,
+            clickPoint.y - locPoint.y,
+          );
+          if (dist < closestDist) {
+            closestDist = dist;
+            closest = loc;
           }
         }
 
-        // 마커는 시각적 표시용(CustomOverlay)으로만 두고, 클릭 판정은 지도 자체의
-        // click 이벤트(가장 기본적이고 안정적인 기능) + 좌표 거리 계산으로 직접 처리한다.
-        // 개별 마커/오버레이의 자체 클릭 판정은 이 환경에서 카카오 내부 드래그 판정과
-        // 얽혀 씹히는 문제가 있어 신뢰할 수 없었음.
-        locations.forEach((loc) => {
-          const position = new window.kakao.maps.LatLng(loc.lat, loc.lng);
-          bounds.extend(position);
+        // 펜션 마커도 같은 방식(좌표 거리)으로 클릭 판정 — 미션 포인트와 겹쳐
+        // 있으면 더 가까운 쪽이 이긴다.
+        let pensionDist = Infinity;
+        if (pensionPositionRef.current) {
+          const pensionPoint = proj.fromCoordToOffset(
+            pensionPositionRef.current,
+          );
+          pensionDist = Math.hypot(
+            clickPoint.x - pensionPoint.x,
+            clickPoint.y - pensionPoint.y,
+          );
+        }
 
-          const pinEl = document.createElement("div");
-          Object.assign(pinEl.style, {
-            width: "24px",
-            height: "24px",
-            borderRadius: "50%",
-            border: "2px solid white",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
-            pointerEvents: "none",
+        if (pensionDist <= HIT_RADIUS_PX && pensionDist <= closestDist) {
+          onSelectPensionRef.current?.();
+        } else if (closest && closestDist <= HIT_RADIUS_PX) {
+          onSelectLocationRef.current?.(closest.id);
+        }
+      });
+
+      if (bounds) {
+        map.fitBounds(bounds);
+      }
+
+      // 숙소(펜션) 마커 — 주소를 지오코딩해서 항상 표시되는 참고용 핀 하나만 추가.
+      // 실패해도(네트워크 등) 지도 기능 자체엔 영향 없이 조용히 넘어간다. bounds는
+      // 일부러 건드리지 않는다 — 리허설처럼 미션 포인트가 실제 숙소(강화도)와 멀리
+      // 떨어진 곳에 있으면, 펜션까지 포함하려고 지도가 그 거리만큼 확 줌아웃돼서
+      // 정작 미션 포인트들이 안 보이게 된다. 펜션 마커는 그 좌표에 얹혀만 있고,
+      // 지도 화면 범위는 항상 미션 포인트 기준으로만 잡는다.
+      fetch(`/api/geocode?query=${encodeURIComponent(PENSION_ADDRESS)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (cancelled || !data?.ok) return;
+          const pensionLatLng = new naver.maps.LatLng(data.lat, data.lng);
+
+          const pensionEl = document.createElement("div");
+          Object.assign(pensionEl.style, {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "10px",
-            fontWeight: "bold",
-            color: "white",
+            width: "26px",
+            height: "26px",
+            borderRadius: "8px",
+            border: "1.5px solid #1c211d",
+            background: "#ffffff",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
+            color: "#1c211d",
+            pointerEvents: "none",
           });
-          applyPinStatus(pinEl, loc, false);
-          pinElsRef.current.set(loc.id, pinEl);
+          pensionEl.title = PENSION_LABEL;
+          pensionEl.innerHTML =
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>';
 
-          const overlay = new window.kakao.maps.CustomOverlay({
-            position,
-            content: pinEl,
+          new naver.maps.Marker({
+            position: pensionLatLng,
             map,
-            xAnchor: 0.5,
-            yAnchor: 0.5,
-            zIndex: 1,
+            icon: {
+              content: pensionEl,
+              size: new naver.maps.Size(26, 26),
+              anchor: new naver.maps.Point(13, 13),
+            },
+            clickable: false,
+            zIndex: 2,
           });
-          overlaysRef.current.set(loc.id, overlay);
-        });
 
-        const HIT_RADIUS_PX = 22;
-        window.kakao.maps.event.addListener(
-          map,
-          "click",
-          (mouseEvent: {
+          // 클릭 판정(좌표 거리 계산)과 선택 스타일 갱신(아래 별도 effect)에
+          // 쓸 수 있게 저장해둔다.
+          pensionPositionRef.current = pensionLatLng;
+          pensionElRef.current = pensionEl;
+        })
+        .catch(() => {});
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            if (cancelled) return;
+            const myLatLng = new naver.maps.LatLng(
+              position.coords.latitude,
+              position.coords.longitude,
+            );
+
+            // 실제 축척(반경 15m)으로 그리면 지도 줌 레벨에서 거의 안 보여서,
+            // 마커처럼 고정 픽셀 크기의 아이콘으로 표시한다. 미션 포인트 핀(파란색)과
+            // 절대 헷갈리지 않도록 계열 자체가 다른 마젠타色 + 발광 링을 준다.
+            const wrapperEl = document.createElement("div");
+            Object.assign(wrapperEl.style, {
+              position: "relative",
+              width: "46px",
+              height: "46px",
+              pointerEvents: "none",
+            });
+
+            // 폰이 바라보는 방향(나침반) 부채꼴 — 방향 정보가 들어오기 전엔 안 보이게 시작
+            const coneEl = document.createElement("div");
+            Object.assign(coneEl.style, {
+              position: "absolute",
+              inset: "0",
+              borderRadius: "50%",
+              background:
+                "conic-gradient(from -30deg, rgba(230,25,163,0.4) 0deg, rgba(230,25,163,0.4) 60deg, transparent 60deg 360deg)",
+              transition: "transform 0.15s linear",
+            });
+            compassConeRef.current = coneEl;
+
+            const dotEl = document.createElement("div");
+            Object.assign(dotEl.style, {
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              width: "16px",
+              height: "16px",
+              marginLeft: "-8px",
+              marginTop: "-8px",
+              borderRadius: "50%",
+              background: "#e619a3",
+              border: "3px solid white",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+            });
+
+            wrapperEl.appendChild(coneEl);
+            wrapperEl.appendChild(dotEl);
+
+            new naver.maps.Marker({
+              position: myLatLng,
+              map,
+              icon: {
+                content: wrapperEl,
+                size: new naver.maps.Size(46, 46),
+                anchor: new naver.maps.Point(23, 23),
+              },
+              clickable: false,
+              zIndex: 5,
+            });
+
+            if (bounds) {
+              bounds.extend(myLatLng);
+              map.fitBounds(bounds);
+            }
+
+            // 나침반 방향: iOS 13+ Safari는 사용자 탭 없이는 권한 요청 자체가 안 되므로
+            // 버튼을 띄우고, 그 외 브라우저는 권한 프롬프트가 없어 바로 붙인다.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            latLng: any;
-          }) => {
-            const proj = map.getProjection();
-            const clickPoint = proj.pointFromCoords(mouseEvent.latLng);
-
-            let closest: (typeof locations)[number] | null = null;
-            let closestDist = Infinity;
-            for (const loc of locations) {
-              const locPoint = proj.pointFromCoords(
-                new window.kakao.maps.LatLng(loc.lat, loc.lng),
-              );
-              const dist = Math.hypot(
-                clickPoint.x - locPoint.x,
-                clickPoint.y - locPoint.y,
-              );
-              if (dist < closestDist) {
-                closestDist = dist;
-                closest = loc;
+            const DOE = (window as any).DeviceOrientationEvent;
+            const compassWasEnabled =
+              window.localStorage.getItem(COMPASS_PREFERENCE_KEY) === "true";
+            if (DOE && typeof DOE.requestPermission === "function") {
+              if (compassWasEnabled) {
+                attachCompass();
+                window.setTimeout(() => {
+                  if (!headingReceivedRef.current) {
+                    setNeedsCompassPermission(true);
+                  }
+                }, 1200);
+              } else {
+                setNeedsCompassPermission(true);
               }
-            }
-
-            // 펜션 마커도 같은 방식(좌표 거리)으로 클릭 판정 — 미션 포인트와 겹쳐
-            // 있으면 더 가까운 쪽이 이긴다.
-            let pensionDist = Infinity;
-            if (pensionPositionRef.current) {
-              const pensionPoint = proj.pointFromCoords(pensionPositionRef.current);
-              pensionDist = Math.hypot(
-                clickPoint.x - pensionPoint.x,
-                clickPoint.y - pensionPoint.y,
-              );
-            }
-
-            if (
-              pensionDist <= HIT_RADIUS_PX &&
-              pensionDist <= closestDist
-            ) {
-              onSelectPensionRef.current?.();
-            } else if (closest && closestDist <= HIT_RADIUS_PX) {
-              onSelectLocationRef.current?.(closest.id);
+            } else if (typeof DOE !== "undefined") {
+              attachCompass();
             }
           },
+          (error) => {
+            console.warn("위치 권한 거부 또는 오류:", error);
+            setLocationDenied(true);
+          },
         );
+      } else {
+        setLocationDenied(true);
+      }
 
-        if (locations.length > 0) {
-          map.setBounds(bounds);
-        }
+      setStatus("ready");
+    }
 
-        // 숙소(펜션) 마커 — 주소를 지오코딩해서 항상 표시되는 참고용 핀 하나만 추가.
-        // 실패해도(네트워크 등) 지도 기능 자체엔 영향 없이 조용히 넘어간다. bounds는
-        // 일부러 건드리지 않는다 — 리허설처럼 미션 포인트가 실제 숙소(강화도)와 멀리
-        // 떨어진 곳에 있으면, 펜션까지 포함하려고 지도가 그 거리만큼 확 줌아웃돼서
-        // 정작 미션 포인트들이 안 보이게 된다. 펜션 마커는 그 좌표에 얹혀만 있고,
-        // 지도 화면 범위는 항상 미션 포인트 기준으로만 잡는다.
-        if (window.kakao.maps.services) {
-          const pensionGeocoder = new window.kakao.maps.services.Geocoder();
-          pensionGeocoder.addressSearch(
-            PENSION_ADDRESS,
-            (result: { y: string; x: string }[], geocodeStatus: string) => {
-              if (
-                geocodeStatus !== window.kakao.maps.services.Status.OK ||
-                !result[0]
-              ) {
-                return;
-              }
-              const pensionLatLng = new window.kakao.maps.LatLng(
-                Number(result[0].y),
-                Number(result[0].x),
-              );
-
-              const pensionEl = document.createElement("div");
-              Object.assign(pensionEl.style, {
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "26px",
-                height: "26px",
-                borderRadius: "8px",
-                border: "1.5px solid #1c211d",
-                background: "#ffffff",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
-                color: "#1c211d",
-                pointerEvents: "none",
-              });
-              pensionEl.title = PENSION_LABEL;
-              pensionEl.innerHTML =
-                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>';
-
-              new window.kakao.maps.CustomOverlay({
-                position: pensionLatLng,
-                content: pensionEl,
-                map,
-                xAnchor: 0.5,
-                yAnchor: 0.5,
-                zIndex: 2,
-              });
-
-              // 클릭 판정(좌표 거리 계산)과 선택 스타일 갱신(아래 별도 effect)에
-              // 쓸 수 있게 저장해둔다.
-              pensionPositionRef.current = pensionLatLng;
-              pensionElRef.current = pensionEl;
-            },
-          );
-        }
-
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const myLatLng = new window.kakao.maps.LatLng(
-                position.coords.latitude,
-                position.coords.longitude,
-              );
-
-              // 실제 축척(반경 15m)으로 그리면 지도 줌 레벨에서 거의 안 보여서,
-              // 마커처럼 고정 픽셀 크기의 오버레이로 표시한다. 미션 포인트 핀(파란색)과
-              // 절대 헷갈리지 않도록 계열 자체가 다른 마젠타色 + 발광 링을 준다.
-              const wrapperEl = document.createElement("div");
-              Object.assign(wrapperEl.style, {
-                position: "relative",
-                width: "46px",
-                height: "46px",
-                pointerEvents: "none",
-              });
-
-              // 폰이 바라보는 방향(나침반) 부채꼴 — 방향 정보가 들어오기 전엔 안 보이게 시작
-              const coneEl = document.createElement("div");
-              Object.assign(coneEl.style, {
-                position: "absolute",
-                inset: "0",
-                borderRadius: "50%",
-                background:
-                  "conic-gradient(from -30deg, rgba(230,25,163,0.4) 0deg, rgba(230,25,163,0.4) 60deg, transparent 60deg 360deg)",
-                transition: "transform 0.15s linear",
-              });
-              compassConeRef.current = coneEl;
-
-              const dotEl = document.createElement("div");
-              Object.assign(dotEl.style, {
-                position: "absolute",
-                left: "50%",
-                top: "50%",
-                width: "16px",
-                height: "16px",
-                marginLeft: "-8px",
-                marginTop: "-8px",
-                borderRadius: "50%",
-                background: "#e619a3",
-                border: "3px solid white",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
-              });
-
-              wrapperEl.appendChild(coneEl);
-              wrapperEl.appendChild(dotEl);
-
-              new window.kakao.maps.CustomOverlay({
-                position: myLatLng,
-                content: wrapperEl,
-                map,
-                xAnchor: 0.5,
-                yAnchor: 0.5,
-                zIndex: 5,
-              });
-
-              bounds.extend(myLatLng);
-              map.setBounds(bounds);
-
-              // 나침반 방향: iOS 13+ Safari는 사용자 탭 없이는 권한 요청 자체가 안 되므로
-              // 버튼을 띄우고, 그 외 브라우저는 권한 프롬프트가 없어 바로 붙인다.
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const DOE = (window as any).DeviceOrientationEvent;
-              const compassWasEnabled =
-                window.localStorage.getItem(COMPASS_PREFERENCE_KEY) === "true";
-              if (DOE && typeof DOE.requestPermission === "function") {
-                if (compassWasEnabled) {
-                  attachCompass();
-                  window.setTimeout(() => {
-                    if (!headingReceivedRef.current) {
-                      setNeedsCompassPermission(true);
-                    }
-                  }, 1200);
-                } else {
-                  setNeedsCompassPermission(true);
-                }
-              } else if (typeof DOE !== "undefined") {
-                attachCompass();
-              }
-            },
-            (error) => {
-              console.warn("위치 권한 거부 또는 오류:", error);
-              setLocationDenied(true);
-            },
-          );
-        } else {
-          setLocationDenied(true);
-        }
-
-        setStatus("ready");
+    loadNaverMaps()
+      .then(initMap)
+      .catch(() => {
+        if (!cancelled) setStatus("error");
       });
-    }
 
-    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
-
-    if (window.kakao?.maps) {
-      initMap();
-    } else if (script) {
-      script.addEventListener("load", initMap);
-    } else {
-      script = document.createElement("script");
-      script.id = SCRIPT_ID;
-      script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false&libraries=services`;
-      script.async = true;
-      script.onload = initMap;
-      script.onerror = () => setStatus("error");
-      document.head.appendChild(script);
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [locations]);
 
   // 마커 생성 자체는 최초 1회뿐이라(위 effect의 mapCreatedRef 가드), 통과/마감 상태나
@@ -614,7 +613,7 @@ export function KakaoMap({
       const isSelected = loc.id === selectedLocationId;
       const pinEl = pinElsRef.current.get(loc.id);
       if (pinEl) applyPinStatus(pinEl, loc, isSelected);
-      overlaysRef.current.get(loc.id)?.setZIndex(isSelected ? 100 : 1);
+      markersRef.current.get(loc.id)?.setZIndex(isSelected ? 100 : 1);
     }
   }, [locations, selectedLocationId]);
 
@@ -630,13 +629,13 @@ export function KakaoMap({
     }
   }, [selectedPension]);
 
-  // 카카오 지도는 컨테이너 크기가 바뀌어도(예: PC 화면에서 옆에 패널이 열리고 닫히며
+  // 네이버 지도는 컨테이너 크기가 바뀌어도(예: PC 화면에서 옆에 패널이 열리고 닫히며
   // 지도 폭이 변할 때) 스스로 다시 그리지 않아 빈 회색 영역이 생긴다 —
-  // ResizeObserver로 감지해서 relayout()을 호출해준다.
+  // ResizeObserver로 감지해서 autoResize()를 호출해준다.
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver(() => {
-      mapInstanceRef.current?.relayout();
+      mapInstanceRef.current?.autoResize();
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
@@ -652,7 +651,7 @@ export function KakaoMap({
       )}
       {status === "error" && (
         <div className="absolute inset-0 flex items-center justify-center bg-paper px-6 text-center text-sm font-medium text-accent">
-          지도를 불러오지 못했습니다. Kakao JS 키/도메인 등록을 확인해주세요.
+          지도를 불러오지 못했습니다. Naver Maps 키/도메인 등록을 확인해주세요.
         </div>
       )}
       {status === "ready" && locationDenied && (

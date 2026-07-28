@@ -2,15 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createLocation } from "@/app/admin/[secret]/setup/actions";
-import { loadKakaoServices } from "@/lib/kakao-loader";
 import {
   LocationMapPicker,
   type ExistingMapLocation,
 } from "@/components/admin/LocationMapPicker";
 
 type Option = { id: string; label: string };
-
-const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 
 export function LocationForm({
   regions,
@@ -50,34 +47,16 @@ export function LocationForm({
   // 역지오코딩해서 채워둔다 — 다른 지도(네이버 등)에서 대조 검색할 때 복붙하기
   // 좋고, 등록되는 address 필드도 항상 실제 핀 위치와 맞게 유지된다.
   useEffect(() => {
-    if (!KAKAO_APP_KEY) return;
     const la = Number(lat);
     const ln = Number(lng);
     if (!Number.isFinite(la) || !Number.isFinite(ln)) return;
 
     const timer = setTimeout(async () => {
       try {
-        await loadKakaoServices();
-        const geocoder = new window.kakao.maps.services.Geocoder();
-        geocoder.coord2Address(
-          ln,
-          la,
-          (
-            result: {
-              address?: { address_name: string };
-              road_address?: { address_name: string };
-            }[],
-            status: string,
-          ) => {
-            if (status === window.kakao.maps.services.Status.OK && result[0]) {
-              setAddress(
-                result[0].road_address?.address_name ??
-                  result[0].address?.address_name ??
-                  "",
-              );
-            }
-          },
-        );
+        const res = await fetch(`/api/reverse-geocode?lat=${la}&lng=${ln}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.ok) setAddress(data.address);
       } catch {
         // 조용히 무시 — 주소칸이 그냥 안 채워질 뿐, 위/경도 직접 수정은 계속 가능
       }
@@ -102,26 +81,23 @@ export function LocationForm({
   }
 
   async function findByAddress() {
-    if (!address.trim() || !KAKAO_APP_KEY) {
+    if (!address.trim()) {
       setAddressStatus("error");
       return;
     }
     setAddressStatus("loading");
     try {
-      await loadKakaoServices();
-      const geocoder = new window.kakao.maps.services.Geocoder();
-      geocoder.addressSearch(
-        address.trim(),
-        (result: { y: string; x: string }[], status: string) => {
-          if (status === window.kakao.maps.services.Status.OK && result[0]) {
-            setLat(Number(result[0].y).toFixed(7));
-            setLng(Number(result[0].x).toFixed(7));
-            setAddressStatus("idle");
-          } else {
-            setAddressStatus("error");
-          }
-        },
+      const res = await fetch(
+        `/api/geocode?query=${encodeURIComponent(address.trim())}`,
       );
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setLat(data.lat.toFixed(7));
+        setLng(data.lng.toFixed(7));
+        setAddressStatus("idle");
+      } else {
+        setAddressStatus("error");
+      }
     } catch {
       setAddressStatus("error");
     }

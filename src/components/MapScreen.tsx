@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { KakaoMap } from "@/components/KakaoMap";
+import { NaverMap } from "@/components/NaverMap";
 import { LocationPanel, type SubmitResult } from "@/components/LocationPanel";
 import { PensionPanel } from "@/components/PensionPanel";
 import { clearGroup } from "@/app/actions";
@@ -219,7 +219,7 @@ export function MapScreen({
       <div className="relative min-h-0 flex-1 p-2">
         <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper-panel shadow-[0_2px_6px_rgba(20,18,12,0.05)] lg:flex-row">
           <div className="relative min-h-0 flex-1">
-            <KakaoMap
+            <NaverMap
               locations={locations.map((loc) => {
                 const passed = results[loc.id]?.result === "passed";
                 const r = results[loc.id];

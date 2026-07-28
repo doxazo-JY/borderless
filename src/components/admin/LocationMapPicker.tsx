@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { loadKakaoServices } from "@/lib/kakao-loader";
+import { loadNaverMaps } from "@/lib/naver-loader";
 
-const KAKAO_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+const NAVER_MAP_CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
 // 답사 지역(강화군 송해면 숙소) 인근 기본 중심 — 좌표가 아직 없을 때만 사용
 const DEFAULT_CENTER = { lat: 37.73, lng: 126.43 };
 // 주소 검색/GPS로 큰 점프를 해도 클릭으로 바로 세부 위치를 찍을 수 있을 만큼
-// 충분히 당겨진 줌 레벨(낮을수록 확대). 클릭으로 좌표를 찍을 때도 같은 값으로
-// 유지해 지도가 갑자기 넓게 빠지는 느낌이 없게 한다.
-const PICK_LEVEL = 3;
+// 충분히 당겨진 줌 레벨(네이버는 숫자가 클수록 확대). 클릭으로 좌표를 찍을 때도
+// 같은 값으로 유지해 지도가 갑자기 넓게 빠지는 느낌이 없게 한다.
+const PICK_ZOOM = 17;
 
 export type ExistingMapLocation = {
   id: string;
@@ -36,7 +36,7 @@ export function LocationMapPicker({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markerRef = useRef<any>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
-    KAKAO_APP_KEY ? "loading" : "error",
+    NAVER_MAP_CLIENT_ID ? "loading" : "error",
   );
   const onPickRef = useRef(onPick);
   useEffect(() => {
@@ -45,20 +45,21 @@ export function LocationMapPicker({
 
   // 지도/마커 생성은 최초 1회만 — 이후 좌표 변경은 아래 별도 effect가 마커만 옮긴다.
   useEffect(() => {
-    if (!KAKAO_APP_KEY) return;
+    if (!NAVER_MAP_CLIENT_ID) return;
     let cancelled = false;
 
-    loadKakaoServices()
+    loadNaverMaps()
       .then(() => {
         if (cancelled || !containerRef.current) return;
+        const naver = window.naver;
 
         const initialLat = Number(lat) || DEFAULT_CENTER.lat;
         const initialLng = Number(lng) || DEFAULT_CENTER.lng;
-        const center = new window.kakao.maps.LatLng(initialLat, initialLng);
+        const center = new naver.maps.LatLng(initialLat, initialLng);
 
-        const map = new window.kakao.maps.Map(containerRef.current, {
+        const map = new naver.maps.Map(containerRef.current, {
           center,
-          level: PICK_LEVEL,
+          zoom: PICK_ZOOM,
         });
         mapRef.current = map;
 
@@ -75,12 +76,15 @@ export function LocationMapPicker({
             boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
           });
           dot.title = `${loc.regionName}지역 · ${loc.name}`;
-          new window.kakao.maps.CustomOverlay({
-            position: new window.kakao.maps.LatLng(loc.lat, loc.lng),
-            content: dot,
+          new naver.maps.Marker({
+            position: new naver.maps.LatLng(loc.lat, loc.lng),
             map,
-            xAnchor: 0.5,
-            yAnchor: 0.5,
+            icon: {
+              content: dot,
+              size: new naver.maps.Size(10, 10),
+              anchor: new naver.maps.Point(5, 5),
+            },
+            clickable: false,
           });
         });
 
@@ -94,26 +98,25 @@ export function LocationMapPicker({
           boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
           transform: "rotate(-45deg)",
         });
-        const marker = new window.kakao.maps.CustomOverlay({
+        const marker = new naver.maps.Marker({
           position: center,
-          content: markerEl,
           map,
-          xAnchor: 0.5,
-          yAnchor: 1,
+          icon: {
+            content: markerEl,
+            size: new naver.maps.Size(20, 20),
+            anchor: new naver.maps.Point(10, 20),
+          },
+          clickable: false,
         });
         markerRef.current = marker;
 
-        window.kakao.maps.event.addListener(
+        naver.maps.Event.addListener(
           map,
           "click",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (mouseEvent: { latLng: any }) => {
-            const { latLng } = mouseEvent;
-            marker.setPosition(latLng);
-            onPickRef.current(
-              latLng.getLat().toFixed(7),
-              latLng.getLng().toFixed(7),
-            );
+          (e: { coord: { lat: () => number; lng: () => number } }) => {
+            const { coord } = e;
+            marker.setPosition(coord);
+            onPickRef.current(coord.lat().toFixed(7), coord.lng().toFixed(7));
           },
         );
 
@@ -137,7 +140,8 @@ export function LocationMapPicker({
     const la = Number(lat);
     const ln = Number(lng);
     if (!Number.isFinite(la) || !Number.isFinite(ln)) return;
-    const pos = new window.kakao.maps.LatLng(la, ln);
+    const naver = window.naver;
+    const pos = new naver.maps.LatLng(la, ln);
     markerRef.current.setPosition(pos);
     mapRef.current.setCenter(pos);
 
@@ -145,11 +149,9 @@ export function LocationMapPicker({
     // 위치를 찍을 수 있게 다시 당겨준다. 지도 클릭으로 인한 미세 조정은 관리자가
     // 직접 맞춰둔 줌을 존중해 건드리지 않는다.
     const prev = prevPosRef.current;
-    const jumped =
-      !prev ||
-      Math.hypot(la - prev.lat, ln - prev.lng) > 0.005;
+    const jumped = !prev || Math.hypot(la - prev.lat, ln - prev.lng) > 0.005;
     if (jumped) {
-      mapRef.current.setLevel(PICK_LEVEL);
+      mapRef.current.setZoom(PICK_ZOOM);
     }
     prevPosRef.current = { lat: la, lng: ln };
   }, [lat, lng]);
