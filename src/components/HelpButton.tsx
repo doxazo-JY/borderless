@@ -11,10 +11,13 @@ export function HelpButton() {
   async function handleSend() {
     setState("sending");
     try {
+      // MapScreen이 지금 열려있는 포인트 id를 body에 흘려둔다(있으면) — 이게 있어야
+      // 임원 화면에서 "통과 처리" 버튼이 뜬다(장소가 없는 요청은 통과 처리 불가).
+      const locationId = document.body.dataset.currentLocationId || null;
       const res = await fetch("/api/help-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locationId: null, message }),
+        body: JSON.stringify({ locationId, message }),
       });
       // fetch는 401/500 같은 응답에서도 예외를 안 던지니 상태 코드를 직접 확인해야
       // 실패를 성공으로 잘못 표시하지 않는다.
@@ -33,7 +36,10 @@ export function HelpButton() {
     state === "error"
   ) {
     return (
-      <div className="fixed top-3 left-1/2 z-[60] w-[min(90vw,320px)] -translate-x-1/2 rounded-xl border-2 border-ink bg-paper-panel p-3 shadow-lg">
+      <div
+        style={{ top: "var(--help-button-top, 12px)" }}
+        className="fixed left-1/2 z-[60] w-[min(90vw,320px)] -translate-x-1/2 rounded-xl border-2 border-ink bg-paper-panel p-3 shadow-lg"
+      >
         <p className="label-tech mb-1 text-[10px] text-accent">도움 요청</p>
         <textarea
           value={message}
@@ -77,7 +83,8 @@ export function HelpButton() {
   return (
     <button
       onClick={() => setState("composing")}
-      className="label-tech fixed top-3 left-1/2 z-[60] -translate-x-1/2 rounded-full border-2 border-ink bg-red-600 px-2.5 py-1.5 text-[9px] font-bold whitespace-nowrap text-white shadow-lg"
+      style={{ top: "var(--help-button-top, 12px)" }}
+      className="label-tech fixed left-1/2 z-[60] -translate-x-1/2 rounded-full border-2 border-ink bg-red-600 px-2.5 py-1.5 text-[9px] font-bold whitespace-nowrap text-white shadow-lg"
     >
       {state === "sent" ? "요청 완료!" : "🆘 도움 요청"}
     </button>

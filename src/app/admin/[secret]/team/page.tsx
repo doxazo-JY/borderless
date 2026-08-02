@@ -8,6 +8,8 @@ import { getAppSettings } from "@/lib/settings";
 import {
   confirmGrant,
   failHelpRequest,
+  manualPassSubmission,
+  manualRejectSubmission,
   passHelpRequest,
   resetAllSubmissions,
   resetSubmission,
@@ -56,8 +58,11 @@ export default async function TeamPage() {
           region: true,
           mission1: true,
           mission2: true,
+          // 통과한 것만이 아니라 실패/판정대기(AI 오류·중단으로 aiPassed가 null인)
+          // 시도도 전부 보여줘서 임원이 도움 요청 없이도 아무 제출이나 리뷰할 수
+          // 있게 한다. 캡이 꽉 차서 사진도 없이 자동 생성되는 CLOSED 더미 행만 제외.
           submissions: {
-            where: { aiPassed: true },
+            where: { NOT: { capStatus: "CLOSED", aiPassed: null } },
             include: { group: true },
             orderBy: { createdAt: "asc" },
           },
@@ -101,10 +106,13 @@ export default async function TeamPage() {
     ).filter((entry): entry is [string, NonNullable<(typeof entry)[1]>] => !!entry[1]),
   );
 
-  // "전체 zip 다운로드"용 파일 목록 — 통과한 모든 제출의 사진/영상을 한 번에 모은다.
+  // "전체 zip 다운로드"용 파일 목록 — 통과한 제출만 대상으로 한다(실패/대기중
+  // 사진까지 섞이면 결산 영상용 zip의 의미가 달라짐). loc.submissions 자체는
+  // 아래 리뷰 UI를 위해 실패/대기중 것도 포함하도록 넓혀뒀으니 여기서 걸러낸다.
   const downloadFiles: DownloadFile[] = [];
   for (const loc of locations) {
     for (const s of loc.submissions) {
+      if (s.aiPassed !== true) continue;
       const namePrefix = safeFilenamePart(
         `${loc.region.name}_${loc.name}_${s.group.displayName}${s.missionSlot ? `_슬롯${s.missionSlot}` : ""}`,
       );
@@ -399,7 +407,7 @@ export default async function TeamPage() {
               </div>
 
               {loc.submissions.length === 0 ? (
-                <p className="mt-2 text-zinc-400">아직 통과한 그룹 없음</p>
+                <p className="mt-2 text-zinc-400">아직 제출 없음</p>
               ) : (
                 <div className="mt-2 space-y-2">
                   {loc.submissions.map((s) => {
@@ -408,32 +416,48 @@ export default async function TeamPage() {
                     const namePrefix = safeFilenamePart(
                       `${loc.region.name}_${loc.name}_${s.group.displayName}${s.missionSlot ? `_슬롯${s.missionSlot}` : ""}`,
                     );
+                    const passed = s.aiPassed === true;
+                    const pending = s.aiPassed === null;
                     return (
                     <div
                       key={s.id}
-                      className="rounded border border-zinc-200 bg-white p-2"
+                      className={`rounded border p-2 ${
+                        passed
+                          ? "border-zinc-200 bg-white"
+                          : pending
+                            ? "border-amber-300 bg-amber-50"
+                            : "border-red-200 bg-red-50"
+                      }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-zinc-700">
                           {s.group.displayName}
-                          {s.missionSlot && (
+                          {passed && s.missionSlot && (
                             <span className="ml-1 text-[10px] font-normal text-zinc-400">
                               슬롯{s.missionSlot}
                               {mission ? ` · ${MISSION_LABEL[mission.type] ?? mission.type}` : ""}
                             </span>
                           )}
                         </span>
-                        {s.grantStatus === "CONFIRMED" ? (
-                          <span className="text-[10px] font-medium text-green-600">
-                            지급 확정됨
-                          </span>
+                        {passed ? (
+                          s.grantStatus === "CONFIRMED" ? (
+                            <span className="text-[10px] font-medium text-green-600">
+                              지급 확정됨
+                            </span>
+                          ) : (
+                            <form action={confirmGrant}>
+                              <input type="hidden" name="id" value={s.id} />
+                              <button className="rounded bg-zinc-900 px-2 py-1 text-[10px] text-white">
+                                지급 확정
+                              </button>
+                            </form>
+                          )
                         ) : (
-                          <form action={confirmGrant}>
-                            <input type="hidden" name="id" value={s.id} />
-                            <button className="rounded bg-zinc-900 px-2 py-1 text-[10px] text-white">
-                              지급 확정
-                            </button>
-                          </form>
+                          <span
+                            className={`text-[10px] font-medium ${pending ? "text-amber-600" : "text-red-600"}`}
+                          >
+                            {pending ? "판정 대기중" : "AI 실패"}
+                          </span>
                         )}
                       </div>
 
@@ -456,29 +480,74 @@ export default async function TeamPage() {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          {s.videoUrl ? (
-                            <>
-                              <video
-                                src={s.videoUrl}
-                                controls
-                                className="w-full rounded"
-                              />
-                              <DownloadLink
-                                url={s.videoUrl}
-                                filename={`${namePrefix}_영상.${extFromUrl(s.videoUrl, "mp4")}`}
-                                label="영상 받기"
-                              />
-                            </>
+                          {passed ? (
+                            s.videoUrl ? (
+                              <>
+                                <video
+                                  src={s.videoUrl}
+                                  controls
+                                  className="w-full rounded"
+                                />
+                                <DownloadLink
+                                  url={s.videoUrl}
+                                  filename={`${namePrefix}_영상.${extFromUrl(s.videoUrl, "mp4")}`}
+                                  label="영상 받기"
+                                />
+                              </>
+                            ) : (
+                              <p className="text-zinc-400">영상 대기</p>
+                            )
                           ) : (
-                            <p className="text-zinc-400">영상 대기</p>
+                            <p className="text-zinc-600">
+                              {s.aiReason ||
+                                (pending
+                                  ? "AI 판정을 사용할 수 없어 대기 중이에요."
+                                  : "사유 없음")}
+                            </p>
                           )}
                         </div>
                       </div>
 
-                      <form action={resetSubmission} className="mt-1">
+                      {/* 실패/대기중 제출은 도움 요청 없이도 여기서 바로 통과 처리하거나
+                          (대기중일 때만) 사유를 남겨 반려할 수 있다 — AI가 잘못 판단했을
+                          가능성까지 임원이 언제든 개입할 수 있어야 한다는 요구로 추가. */}
+                      {!passed && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-zinc-200 pt-2">
+                          <form action={manualPassSubmission}>
+                            <input type="hidden" name="submissionId" value={s.id} />
+                            <ConfirmDeleteButton
+                              label="통과 처리"
+                              className="rounded bg-emerald-600 px-2 py-1 text-[10px] font-medium text-white"
+                              confirmText={`${s.group.displayName}를 "${loc.name}"에서 통과 처리할까요? 캡 차감/미션 공개까지 실제 통과와 동일하게 처리됩니다.`}
+                            />
+                          </form>
+                          {pending && (
+                            <form
+                              action={manualRejectSubmission}
+                              className="flex min-w-0 flex-1 items-center gap-1"
+                            >
+                              <input type="hidden" name="submissionId" value={s.id} />
+                              <input
+                                name="reason"
+                                required
+                                placeholder="반려 사유 (조에게 그대로 보여요)"
+                                className="min-w-0 flex-1 rounded border border-zinc-300 p-1 text-[10px]"
+                              />
+                              <button className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-[10px] font-medium text-red-600">
+                                반려
+                              </button>
+                            </form>
+                          )}
+                        </div>
+                      )}
+
+                      <form
+                        action={resetSubmission}
+                        className="mt-2 border-t border-zinc-200 pt-2"
+                      >
                         <input type="hidden" name="id" value={s.id} />
                         <ConfirmDeleteButton
-                          label="초기화"
+                          label="제출 초기화"
                           confirmText={`${s.group.displayName}의 "${loc.region.name}지역 · ${loc.name}" 제출을 초기화할까요?\n지급 확정 기록도 함께 사라지고, 캡이 되돌아가서 다시 시도할 수 있게 됩니다.`}
                         />
                       </form>

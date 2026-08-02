@@ -510,8 +510,8 @@ export function LocationPanel({
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <label className="flex-1 cursor-pointer rounded-md border border-line bg-paper-panel px-3 py-2 text-center text-sm font-medium">
+          <div className="flex flex-col gap-2">
+            <label className="w-full cursor-pointer rounded-md border border-line bg-paper-panel px-3 py-2 text-center text-sm font-medium">
               {file ? "사진 다시 선택" : "사진 선택"}
               <input
                 type="file"
@@ -523,7 +523,7 @@ export function LocationPanel({
             <button
               onClick={handleSubmit}
               disabled={!file || submitting}
-              className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-bold text-white shadow-[0_4px_12px_-4px_rgba(225,89,28,0.5)] disabled:opacity-40"
+              className="w-full rounded-md bg-accent px-3 py-2 text-sm font-bold text-white shadow-[0_4px_12px_-4px_rgba(225,89,28,0.5)] disabled:opacity-40"
             >
               {submitting ? "판정 중..." : "제출하기"}
             </button>

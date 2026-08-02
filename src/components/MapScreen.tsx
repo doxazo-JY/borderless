@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { NaverMap } from "@/components/NaverMap";
@@ -120,6 +120,43 @@ export function MapScreen({
     return () => clearInterval(interval);
   }, [router]);
 
+  // 전역 "도움 요청" 버튼(HelpButton)은 루트 레이아웃에 fixed로 떠 있어 이 배너의
+  // 유무/줄바꿈을 모른다 — 배너 실제 높이를 CSS 변수로 흘려보내서 겹치지 않게 한다.
+  const bannerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!aiJudgingDisabled) {
+      document.documentElement.style.removeProperty("--help-button-top");
+      return;
+    }
+    function updateOffset() {
+      const height = bannerRef.current?.offsetHeight ?? 0;
+      document.documentElement.style.setProperty(
+        "--help-button-top",
+        `${12 + height}px`,
+      );
+    }
+    updateOffset();
+    const observer = new ResizeObserver(updateOffset);
+    if (bannerRef.current) observer.observe(bannerRef.current);
+    window.addEventListener("resize", updateOffset);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateOffset);
+      document.documentElement.style.removeProperty("--help-button-top");
+    };
+  }, [aiJudgingDisabled]);
+
+  // 전역 "도움 요청" 버튼(HelpButton)이 지금 보고 있는 포인트를 알아야 임원이
+  // "통과 처리"할 수 있는(=locationId가 있는) 요청이 만들어진다. HelpButton은
+  // 루트 레이아웃에 있어 이 컴포넌트의 state를 props로 못 받으니, body에
+  // 데이터 속성으로 흘려보내고 요청 전송 시점에 거기서 읽어가게 한다.
+  useEffect(() => {
+    document.body.dataset.currentLocationId = selectedId ?? "";
+    return () => {
+      delete document.body.dataset.currentLocationId;
+    };
+  }, [selectedId]);
+
   const selectedLocation = locations.find((l) => l.id === selectedId) ?? null;
   const currentIndex = regionProgress.findIndex((p) => p.status === "current");
   const stepperPct =
@@ -137,9 +174,12 @@ export function MapScreen({
   return (
     <main className="flex flex-1 flex-col bg-paper text-ink">
       {aiJudgingDisabled && (
-        <div className="label-tech border-b border-accent bg-accent px-4 py-2 text-center text-[11px] font-bold text-white">
+        <div
+          ref={bannerRef}
+          className="label-tech border-b border-accent bg-accent px-4 py-2 text-center text-[11px] font-bold text-white"
+        >
           현재 AI 평가가 불가능해 임원의 수동 평가가 진행될 예정입니다. 사진 제출 후
-          "임원 도움 요청" 버튼을 눌러주세요.
+          &ldquo;임원 도움 요청&rdquo; 버튼을 눌러주세요.
         </div>
       )}
       <div className="relative border-b border-line px-4 py-3">

@@ -197,3 +197,74 @@ export async function failHelpRequest(formData: FormData) {
   await prisma.helpRequest.update({ where: { id: hr.id }, data: { status: "RESOLVED" } });
   refresh();
 }
+
+// 아래 두 함수는 도움 요청과 무관하게, "포인트별 현황"에 나열된 아무 제출(AI 실패
+// 또는 AI 판정 자체가 안 된 대기중 건)을 임원이 직접 통과/반려 처리할 수 있게 한다.
+// 참가자가 도움 요청 버튼을 안 눌렀어도(또는 AI가 잘못 판단했다고 의심될 때도)
+// 임원이 언제든 개입할 수 있어야 한다는 요구로 추가됨.
+export async function manualPassSubmission(formData: FormData) {
+  const submissionId = String(formData.get("submissionId") ?? "");
+  if (!submissionId) return;
+
+  const submission = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    include: { location: true },
+  });
+  if (!submission || submission.aiPassed === true) return;
+
+  const location = submission.location;
+
+  // 지역당 통과는 한 곳만 — 이미 같은 지역 다른 포인트에서 통과했다면 여기서도 막는다.
+  const passedInRegion = await prisma.submission.findFirst({
+    where: {
+      groupId: submission.groupId,
+      aiPassed: true,
+      location: { regionId: location.regionId, isActive: true },
+    },
+    include: { location: true },
+  });
+  if (passedInRegion && passedInRegion.locationId !== location.id) {
+    throw new Error(
+      `이 조는 이미 "${passedInRegion.location.name}"에서 이 지역을 통과했어요 — 중복 통과 처리할 수 없습니다.`,
+    );
+  }
+
+  const claimed = await prisma.$queryRaw<{ claimedCount: number }[]>`
+    UPDATE "Location"
+    SET "claimedCount" = "claimedCount" + 1
+    WHERE id = ${location.id} AND "claimedCount" < capacity
+    RETURNING "claimedCount"
+  `;
+  if (claimed.length === 0) {
+    throw new Error("이미 마감된 포인트라 통과 처리할 수 없어요.");
+  }
+
+  await prisma.submission.update({
+    where: { id: submission.id },
+    data: {
+      aiPassed: true,
+      aiReason: "임원 확인 후 통과 처리되었습니다.",
+      capStatus: "AVAILABLE",
+      grantStatus: "PENDING",
+      missionSlot: claimed[0].claimedCount,
+    },
+  });
+
+  refresh();
+}
+
+export async function manualRejectSubmission(formData: FormData) {
+  const submissionId = String(formData.get("submissionId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!submissionId || !reason) return;
+
+  const submission = await prisma.submission.findUnique({ where: { id: submissionId } });
+  if (!submission || submission.aiPassed === true) return;
+
+  await prisma.submission.update({
+    where: { id: submission.id },
+    data: { aiPassed: false, aiReason: reason },
+  });
+
+  refresh();
+}

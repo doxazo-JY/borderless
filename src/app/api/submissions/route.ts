@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentGroup } from "@/lib/group";
 import { getCurrentTargetRegionId } from "@/lib/region-progress";
+import { getAppSettings } from "@/lib/settings";
 import { supabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase";
 import { judgePhotoMatch } from "@/lib/judge";
 
@@ -83,6 +84,28 @@ export async function POST(request: Request) {
     .from(STORAGE_BUCKET)
     .getPublicUrl(photoPath);
   const photoUrl = photoUrlData.publicUrl;
+
+  // 임원이 "AI 판정 중단"으로 표시해뒀으면(크레딧 소진 등을 미리 알고 있는 경우),
+  // 어차피 실패할 API를 호출하지 않고 바로 수동 검토 대기 상태로 넘어간다 —
+  // 아래 catch 블록과 완전히 같은 모양의 제출을 만들어 임원 화면에서 똑같이 다뤄진다.
+  const { aiJudgingDisabled } = await getAppSettings();
+  if (aiJudgingDisabled) {
+    await prisma.submission.create({
+      data: {
+        groupId: group.id,
+        locationId: location.id,
+        photoUrl,
+        capStatus: "AVAILABLE",
+        aiPassed: null,
+      },
+    });
+    return NextResponse.json({
+      result: "ai_error",
+      message:
+        "지금은 임원이 직접 확인 중이에요. 사진은 저장됐으니 '임원 도움 요청' 버튼을 눌러 확인을 요청해주세요.",
+      photoUrl,
+    });
+  }
 
   let judgement;
   try {
