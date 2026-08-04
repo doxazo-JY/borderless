@@ -6,6 +6,7 @@ import Link from "next/link";
 import { NaverMap } from "@/components/NaverMap";
 import { LocationPanel, type SubmitResult } from "@/components/LocationPanel";
 import { PensionPanel } from "@/components/PensionPanel";
+import { ConversationTopicPanel } from "@/components/ConversationTopicPanel";
 import { clearGroup } from "@/app/actions";
 import { teamColor } from "@/lib/team-colors";
 import type { RegionProgressItem } from "@/lib/region-progress";
@@ -94,6 +95,7 @@ export function MapScreen({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showPension, setShowPension] = useState(false);
+  const [showTopics, setShowTopics] = useState(false);
   // 그룹이 위치 패널을 닫고 지도만 보다가 다시 열어도(마커 재클릭) 통과 상태/영상 업로드
   // 여부가 사라지지 않도록, 결과와 현재 탭을 MapScreen 레벨에서 위치별로 들고 있는다.
   const [results, setResults] = useState<Record<string, SubmitResult>>(() => {
@@ -120,11 +122,16 @@ export function MapScreen({
     return () => clearInterval(interval);
   }, [router]);
 
+  // 4지역 모두 미션 완료(영상 업로드까지)면 상단에 숙소 복귀 안내를 계속 띄운다.
+  const allRegionsDone =
+    regionProgress.length > 0 && regionProgress.every((p) => p.status === "done");
+  const showTopBanner = aiJudgingDisabled || allRegionsDone;
+
   // 전역 "도움 요청" 버튼(HelpButton)은 루트 레이아웃에 fixed로 떠 있어 이 배너의
   // 유무/줄바꿈을 모른다 — 배너 실제 높이를 CSS 변수로 흘려보내서 겹치지 않게 한다.
   const bannerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!aiJudgingDisabled) {
+    if (!showTopBanner) {
       document.documentElement.style.removeProperty("--help-button-top");
       return;
     }
@@ -144,7 +151,7 @@ export function MapScreen({
       window.removeEventListener("resize", updateOffset);
       document.documentElement.style.removeProperty("--help-button-top");
     };
-  }, [aiJudgingDisabled]);
+  }, [showTopBanner]);
 
   // 전역 "도움 요청" 버튼(HelpButton)이 지금 보고 있는 포인트를 알아야 임원이
   // "통과 처리"할 수 있는(=locationId가 있는) 요청이 만들어진다. HelpButton은
@@ -173,13 +180,19 @@ export function MapScreen({
 
   return (
     <main className="flex flex-1 flex-col bg-paper text-ink">
-      {aiJudgingDisabled && (
-        <div
-          ref={bannerRef}
-          className="label-tech border-b border-accent bg-accent px-4 py-2 text-center text-[11px] font-bold text-white"
-        >
-          현재 AI 평가가 불가능해 임원의 수동 평가가 진행될 예정입니다. 사진 제출 후
-          &ldquo;임원 도움 요청&rdquo; 버튼을 눌러주세요.
+      {showTopBanner && (
+        <div ref={bannerRef}>
+          {aiJudgingDisabled && (
+            <div className="label-tech border-b border-accent bg-accent px-4 py-2 text-center text-[11px] font-bold text-white">
+              현재 AI 평가가 불가능해 임원의 수동 평가가 진행될 예정입니다. 사진 제출 후
+              &ldquo;임원 도움 요청&rdquo; 버튼을 눌러주세요.
+            </div>
+          )}
+          {allRegionsDone && (
+            <div className="label-tech border-b border-ink bg-ink px-4 py-2 text-center text-[11px] font-bold text-white">
+              모든 지역 미션 완료! 숙소로 돌아가세요.
+            </div>
+          )}
         </div>
       )}
       <div className="relative border-b border-line px-4 py-3">
@@ -194,6 +207,17 @@ export function MapScreen({
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedId(null);
+                setShowPension(false);
+                setShowTopics(true);
+              }}
+              className="label-tech text-[10px] text-ink underline underline-offset-2"
+            >
+              대화 주제
+            </button>
             <Link
               href="/inventory"
               className="label-tech text-[10px] text-ink underline underline-offset-2"
@@ -280,11 +304,13 @@ export function MapScreen({
               })}
               onSelectLocation={(id) => {
                 setShowPension(false);
+                setShowTopics(false);
                 setSelectedId(id);
               }}
               selectedLocationId={selectedId}
               onSelectPension={() => {
                 setSelectedId(null);
+                setShowTopics(false);
                 setShowPension(true);
               }}
               selectedPension={showPension}
@@ -299,6 +325,8 @@ export function MapScreen({
               earnedIngredients={earnedIngredients}
               teammatesRegionProgress={teammatesRegionProgress}
             />
+          ) : showTopics ? (
+            <ConversationTopicPanel onClose={() => setShowTopics(false)} />
           ) : selectedLocation ? (
             <LocationPanel
               // 마커를 닫지 않고 바로 다른 위치로 옮겨 클릭하면 selectedId만 바뀌고

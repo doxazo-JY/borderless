@@ -483,10 +483,12 @@ export default async function TeamPage() {
                           {passed ? (
                             s.videoUrl ? (
                               <>
+                                {/* 세로로 찍힌 영상이 카드를 과도하게 길게 늘리지 않도록
+                                    높이를 제한 — 전체 화면으로 보려면 갤러리 탭으로. */}
                                 <video
                                   src={s.videoUrl}
                                   controls
-                                  className="w-full rounded"
+                                  className="max-h-28 w-full rounded object-contain"
                                 />
                                 <DownloadLink
                                   url={s.videoUrl}

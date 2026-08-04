@@ -8,6 +8,7 @@ export function AdminNav({ base }: { base: string }) {
   const tabs = [
     { href: `${base}/setup`, label: "설정" },
     { href: `${base}/team`, label: "팀" },
+    { href: `${base}/gallery`, label: "갤러리" },
   ];
 
   return (
