@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { MapDecoration } from "@/components/MapDecoration";
 import { ParchmentBurn } from "@/components/ParchmentBurn";
 import { ParchmentCompass } from "@/components/ParchmentCompass";
+import { ParchmentStains } from "@/components/ParchmentStains";
 
 export default async function Home() {
   const [group, settings] = await Promise.all([
@@ -27,6 +28,7 @@ export default async function Home() {
 
   return (
     <main className="route-map relative flex flex-1 flex-col items-center justify-center gap-10 overflow-hidden px-6 py-16 text-ink">
+      <ParchmentStains />
       <ParchmentBurn />
       <MapDecoration />
       <ParchmentCompass className="parchment-compass-fixed" />

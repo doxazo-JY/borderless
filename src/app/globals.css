@@ -80,13 +80,17 @@ body {
   background-image:
     repeating-linear-gradient(13deg, rgba(74, 47, 24, 0.05) 0px, transparent 1px, transparent 2px),
     repeating-linear-gradient(-71deg, rgba(74, 47, 24, 0.04) 0px, transparent 1px, transparent 3px),
-    radial-gradient(circle 150px at 20% 22%, rgba(74, 47, 24, 0.14), transparent 100%),
-    radial-gradient(circle 120px at 78% 16%, rgba(74, 47, 24, 0.1), transparent 100%),
-    radial-gradient(circle 170px at 86% 80%, rgba(74, 47, 24, 0.13), transparent 100%),
-    radial-gradient(circle 110px at 12% 86%, rgba(74, 47, 24, 0.11), transparent 100%),
-    radial-gradient(circle 100px at 55% 52%, rgba(74, 47, 24, 0.06), transparent 100%),
-    radial-gradient(ellipse at center, transparent 52%, rgba(36, 18, 6, 0.5) 100%);
-  background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+    radial-gradient(ellipse at center, transparent 50%, rgba(36, 18, 6, 0.5) 100%);
+}
+
+/* 얼룩(foxing)은 이제 CSS 타원이 아니라 ParchmentStains.tsx(SVG feTurbulence)가
+   그린다 — 도형을 붙여넣은 것처럼 보이지 않게 하려고 노이즈를 얼룩 모양 자체로 쓴다. */
+.parchment-stains {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .parchment-burn {
