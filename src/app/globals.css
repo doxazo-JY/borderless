@@ -60,3 +60,77 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* 계기판 카드용 은은한 입체감 — 헤어라인 테두리만으로는 와이어프레임처럼 보여서 보강 */
+.shadow-panel {
+  box-shadow:
+    0 1px 2px rgba(28, 33, 29, 0.04),
+    0 10px 24px -16px rgba(28, 33, 29, 0.22);
+}
+
+/* 팀 선택 화면 배경 — 그을린 양피지 실험. 이 느낌은 앱 전체 톤(밝은 종이+잉크+오렌지)과
+   달라서 일단 이 화면에만 국한해서 시도해본다 — 성공하면 범위를 넓힐지 다시 논의.
+   그래서 전역 --color-* 토큰을 안 쓰고 이 클래스 안에서만 로컬 변수로 세피아 팔레트를 둔다. */
+.route-map {
+  position: relative;
+  --parchment-base: #e8d7b3;
+  --parchment-mid: #4a2f18;
+  --parchment-dark: #241206;
+  background-color: var(--parchment-base);
+  background-image:
+    repeating-linear-gradient(13deg, rgba(74, 47, 24, 0.05) 0px, transparent 1px, transparent 2px),
+    repeating-linear-gradient(-71deg, rgba(74, 47, 24, 0.04) 0px, transparent 1px, transparent 3px),
+    radial-gradient(circle 150px at 20% 22%, rgba(74, 47, 24, 0.14), transparent 100%),
+    radial-gradient(circle 120px at 78% 16%, rgba(74, 47, 24, 0.1), transparent 100%),
+    radial-gradient(circle 170px at 86% 80%, rgba(74, 47, 24, 0.13), transparent 100%),
+    radial-gradient(circle 110px at 12% 86%, rgba(74, 47, 24, 0.11), transparent 100%),
+    radial-gradient(circle 100px at 55% 52%, rgba(74, 47, 24, 0.06), transparent 100%),
+    radial-gradient(ellipse at center, transparent 52%, rgba(36, 18, 6, 0.5) 100%);
+  background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.parchment-burn {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.route-map-decoration {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* 참고 이미지처럼 점 하나하나가 길쭉한 잉크 자국(dab)으로 보이게 —
+   두께를 키우고 대시 길이를 늘려서 둥근 캡이 만드는 타원형 점이 잘 드러나게 한다. */
+.route-map-decoration__trail {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 9;
+  stroke-linecap: round;
+  opacity: 0.65;
+}
+
+.route-map-decoration__pin {
+  opacity: 0.85;
+}
+
+.parchment-compass-fixed {
+  position: absolute;
+  right: 28px;
+  bottom: 26px;
+  width: 76px;
+  height: 76px;
+  pointer-events: none;
+}
+
+.map-selection-header {
+  position: relative;
+  padding: 1.5rem 2rem;
+  background: color-mix(in srgb, var(--color-paper-panel) 70%, transparent);
+  border-block: 1px solid var(--color-line);
+}
