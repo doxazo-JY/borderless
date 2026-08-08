@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { NaverMap } from "@/components/NaverMap";
 import { LocationPanel, type SubmitResult } from "@/components/LocationPanel";
 import { PensionPanel } from "@/components/PensionPanel";
 import { ConversationTopicPanel } from "@/components/ConversationTopicPanel";
+import { ParchmentBurn } from "@/components/ParchmentBurn";
+import { ParchmentStains } from "@/components/ParchmentStains";
 import { clearGroup } from "@/app/actions";
 import { teamColor } from "@/lib/team-colors";
 import type { RegionProgressItem } from "@/lib/region-progress";
@@ -179,7 +180,10 @@ export function MapScreen({
   );
 
   return (
-    <main className="flex flex-1 flex-col bg-paper text-ink">
+    <main className="route-map relative flex flex-1 flex-col overflow-hidden text-ink">
+      <ParchmentStains />
+      <ParchmentBurn outerWidth={14} innerWidth={9} insetPercent={0.25} />
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col p-5">
       {showTopBanner && (
         <div ref={bannerRef}>
           {aiJudgingDisabled && (
@@ -218,12 +222,6 @@ export function MapScreen({
             >
               대화 주제
             </button>
-            <Link
-              href="/inventory"
-              className="label-tech text-[10px] text-ink underline underline-offset-2"
-            >
-              인벤토리
-            </Link>
             {!groupSelectionLocked && (
               <form action={clearGroup}>
                 <button
@@ -359,7 +357,8 @@ export function MapScreen({
             // 모바일에서는 선택 전엔 지도만 꽉 채우고(기존 동작 유지), PC 화면에서만
             // 우측에 빈 패널을 미리 보여줘서 "지도 왼쪽 · 패널 오른쪽" 2단 구성이
             // 마커를 클릭하기 전부터 자리 잡혀 보이게 한다.
-            <div className="hidden shrink-0 flex-col items-center justify-center border-l border-line bg-paper-panel px-6 text-center text-sm text-muted lg:flex lg:h-full lg:w-[40%]">
+            <div className="parchment-panel relative hidden shrink-0 flex-col items-center justify-center border-l border-line px-6 text-center text-sm text-muted lg:flex lg:h-full lg:w-[40%]">
+              <ParchmentStains idPrefix="empty-panel-stain" intensity={0.4} />
               지도에서 포인트를 선택하면
               <br />
               여기에 상세 정보가 표시돼요.
@@ -383,6 +382,7 @@ export function MapScreen({
               : `현재 목적지 · ${targetRegionName}지역`}
           </div>
         )}
+      </div>
       </div>
     </main>
   );

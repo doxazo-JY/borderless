@@ -54,14 +54,23 @@ function StainLayer({
   );
 }
 
-export function ParchmentStains() {
+/** idPrefix: 같은 페이지에 이 컴포넌트를 여러 번 쓸 때(배경 1번 + 패널마다 1번씩)
+ * SVG filter id가 겹치면 안 되니까 인스턴스마다 다른 접두어를 준다.
+ * intensity: 0~1 — 패널처럼 더 옅게 써야 하는 곳에서 전체 진하기를 한 번에 낮춘다. */
+export function ParchmentStains({
+  idPrefix = "stain",
+  intensity = 1,
+}: {
+  idPrefix?: string;
+  intensity?: number;
+}) {
   return (
     <svg className="parchment-stains" width="100%" height="100%" aria-hidden="true">
       <defs />
       {/* 크고 옅게 퍼진 겹 → 작고 진한 반점 겹, 순서대로 쌓아서 깊이감을 준다 */}
-      <StainLayer id="stain-1" seed={4} baseFrequency="0.006 0.009" exponent={4} color="#6b431f" opacity={0.7} />
-      <StainLayer id="stain-2" seed={19} baseFrequency="0.01 0.015" exponent={4.8} color="#3a2410" opacity={0.72} />
-      <StainLayer id="stain-3" seed={37} baseFrequency="0.02 0.028" exponent={6} color="#1a0d04" opacity={0.6} />
+      <StainLayer id={`${idPrefix}-1`} seed={4} baseFrequency="0.006 0.009" exponent={4} color="#6b431f" opacity={0.7 * intensity} />
+      <StainLayer id={`${idPrefix}-2`} seed={19} baseFrequency="0.01 0.015" exponent={4.8} color="#3a2410" opacity={0.72 * intensity} />
+      <StainLayer id={`${idPrefix}-3`} seed={37} baseFrequency="0.02 0.028" exponent={6} color="#1a0d04" opacity={0.6 * intensity} />
     </svg>
   );
 }

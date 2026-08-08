@@ -1,8 +1,21 @@
 /** 양피지 실험용 그을린 가장자리 — feTurbulence로 두꺼운 테두리 선을 울퉁불퉁하게
  * 흩뜨려서 불에 그슬린 종이 가장자리처럼 보이게 한다. 두 겹을 서로 다른 노이즈 시드로
  * 흔들어서 같은 자리에서 겹치지 않게 한다(그래야 각지게 안 보인다).
- * .route-map 실험이 폐기되면 이 컴포넌트도 같이 지운다. */
-export function ParchmentBurn() {
+ * .route-map 실험이 폐기되면 이 컴포넌트도 같이 지운다.
+ *
+ * outerWidth/innerWidth로 두께를, insetPercent로 가장자리에서 얼마나 안쪽에서
+ * 시작할지를 조절할 수 있다 — 지도 화면처럼 헤더가 가장자리에 바짝 붙어있는 곳에서는
+ * 기본값(소속 선택 화면 기준)보다 얇고, insetPercent를 낮춰(=테두리를 화면 끝쪽으로
+ * 더 밀어서) 콘텐츠와 안 겹치게 쓴다. */
+export function ParchmentBurn({
+  outerWidth = 54,
+  innerWidth = 34,
+  insetPercent = 1,
+}: {
+  outerWidth?: number;
+  innerWidth?: number;
+  insetPercent?: number;
+}) {
   return (
     // 화면 전체를 덮는 투명 캔버스. 실제 위치·크기(inset:0)는
     // globals.css의 .parchment-burn 클래스가 정한다.
@@ -37,27 +50,27 @@ export function ParchmentBurn() {
           filter="url(#burn-jitter-…)" 때문에 화면엔 울퉁불퉁하게 보인다.
           아래쪽(먼저 그려지는) 겹 — 더 두껍고(strokeWidth) 더 진한(stroke) 바탕 그을림. */}
       <rect
-        x="1%" // 화면 가장자리에서 얼마나 안쪽에서 시작할지 (1% = 거의 끝까지)
-        y="1%"
-        width="98%" // x/y와 짝을 맞춰 네모가 화면을 거의 꽉 채우게
-        height="98%"
+        x={`${insetPercent}%`} // 화면 가장자리에서 얼마나 안쪽에서 시작할지
+        y={`${insetPercent}%`}
+        width={`${100 - insetPercent * 2}%`} // x/y와 짝을 맞춰 네모가 화면을 거의 꽉 채우게
+        height={`${100 - insetPercent * 2}%`}
         fill="none" // 안쪽은 안 채우고 테두리 선만 그림
         stroke="#241206" // 선 색 — 가장 어두운 그을음
         strokeOpacity="0.4" // 선 투명도(0~1) — 낮을수록 배경이 비쳐 보임
-        strokeWidth="54" // 선 두께(px) — 키우면 더 두꺼운 그을린 띠가 됨
+        strokeWidth={outerWidth} // 선 두께(px) — 키우면 더 두꺼운 그을린 띠가 됨
         filter="url(#burn-jitter-1)" // 위에서 정의한 흔들림 필터 적용
       />
       {/* 위쪽(나중에 그려져서 겹쳐 보이는) 겹 — 더 얇고 옅은 색, 다른 흔들림
           패턴(burn-jitter-2)이라 아래 겹과 굽이가 어긋나 보이게 한다. */}
       <rect
-        x="1.2%"
-        y="1.2%"
-        width="97.6%"
-        height="97.6%"
+        x={`${insetPercent + 0.2}%`}
+        y={`${insetPercent + 0.2}%`}
+        width={`${100 - (insetPercent + 0.2) * 2}%`}
+        height={`${100 - (insetPercent + 0.2) * 2}%`}
         fill="none"
         stroke="#3a2410"
         strokeOpacity="0.3"
-        strokeWidth="34"
+        strokeWidth={innerWidth}
         filter="url(#burn-jitter-2)"
       />
     </svg>

@@ -83,6 +83,17 @@ body {
     radial-gradient(ellipse at center, transparent 50%, rgba(36, 18, 6, 0.5) 100%);
 }
 
+/* 지도 화면의 패널(기준 사진·업로드·대화 주제 등)용 배경 — 바탕 종이(.route-map)보다
+   한 톤 밝게 해서 패널이 배경과 구분은 되면서도, 단색이 아니라 같은 섬유선 결을
+   공유해서 한 세트처럼 보이게 한다. 얼룩(ParchmentStains)은 intensity를 낮춰 옅게 얹는다. */
+.parchment-panel {
+  position: relative;
+  background-color: #f3e8cd;
+  background-image:
+    repeating-linear-gradient(13deg, rgba(74, 47, 24, 0.035) 0px, transparent 1px, transparent 2px),
+    repeating-linear-gradient(-71deg, rgba(74, 47, 24, 0.028) 0px, transparent 1px, transparent 3px);
+}
+
 /* 얼룩(foxing)은 이제 CSS 타원이 아니라 ParchmentStains.tsx(SVG feTurbulence)가
    그린다 — 도형을 붙여넣은 것처럼 보이지 않게 하려고 노이즈를 얼룩 모양 자체로 쓴다. */
 .parchment-stains {

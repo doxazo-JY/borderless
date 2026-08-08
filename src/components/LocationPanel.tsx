@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { MapLocationInfo, PanelStep } from "@/components/MapScreen";
+import { ParchmentStains } from "@/components/ParchmentStains";
 import { supabaseBrowser } from "@/lib/supabase-client";
 
 const MISSION_LABEL: Record<string, string> = {
@@ -284,8 +285,9 @@ export function LocationPanel({
 
   return (
     <div
-      className={`relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line bg-paper-panel px-4 pt-4 pb-4 text-ink lg:h-full lg:max-h-none lg:w-[40%] lg:shrink-0 lg:border-t-0 lg:border-l ${isRoomy ? "min-h-[45dvh] lg:min-h-0" : ""}`}
+      className={`parchment-panel relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line px-4 pt-4 pb-4 text-ink lg:h-full lg:max-h-none lg:w-[40%] lg:shrink-0 lg:border-t-0 lg:border-l ${isRoomy ? "min-h-[45dvh] lg:min-h-0" : ""}`}
     >
+      <ParchmentStains idPrefix="location-panel-stain" intensity={0.4} />
       <div className="mb-3 flex items-start justify-between">
         <div>
           <p className="label-tech text-[10px] text-muted">
