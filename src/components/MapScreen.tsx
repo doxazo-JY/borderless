@@ -97,6 +97,10 @@ export function MapScreen({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showPension, setShowPension] = useState(false);
   const [showTopics, setShowTopics] = useState(false);
+  // 배너(AI 판정 중단/숙소 복귀 안내)는 지도를 밀어내리지 않고 지도 위에 뜨는
+  // 오버레이라, 사용자가 접어서 지도를 더 크게 볼 수 있게 한다. 그룹명/스테퍼
+  // 헤더는 작아서 접을 필요 없이 항상 문서 흐름 그대로 둔다.
+  const [showBannerOverlay, setShowBannerOverlay] = useState(true);
   // 그룹이 위치 패널을 닫고 지도만 보다가 다시 열어도(마커 재클릭) 통과 상태/영상 업로드
   // 여부가 사라지지 않도록, 결과와 현재 탭을 MapScreen 레벨에서 위치별로 들고 있는다.
   const [results, setResults] = useState<Record<string, SubmitResult>>(() => {
@@ -128,23 +132,27 @@ export function MapScreen({
     regionProgress.length > 0 && regionProgress.every((p) => p.status === "done");
   const showTopBanner = aiJudgingDisabled || allRegionsDone;
 
-  // 전역 "도움 요청" 버튼(HelpButton)은 루트 레이아웃에 fixed로 떠 있어 이 배너의
-  // 유무/줄바꿈을 모른다 — 배너 실제 높이를 CSS 변수로 흘려보내서 겹치지 않게 한다.
+  // 전역 "도움 요청" 버튼(HelpButton)은 루트 레이아웃에 fixed로 떠 있어 헤더/배너의
+  // 유무·높이를 모른다 — 두 요소 높이를 더하고 바깥 padding(p-5/p-2 등)을 따로
+  // 어림잡아 더하면 패딩 값이 바뀔 때마다 다시 안 맞을 수 있어서, 대신
+  // getBoundingClientRect()로 "배너(있으면)나 헤더의 실제 뷰포트 기준 하단 좌표"를
+  // 직접 읽는다 — 어떤 padding/border가 껴 있든 항상 정확하다.
+  const headerRef = useRef<HTMLDivElement>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!showTopBanner) {
-      document.documentElement.style.removeProperty("--help-button-top");
-      return;
-    }
     function updateOffset() {
-      const height = bannerRef.current?.offsetHeight ?? 0;
+      const lowestEl =
+        (showTopBanner && showBannerOverlay ? bannerRef.current : null) ??
+        headerRef.current;
+      const bottom = lowestEl?.getBoundingClientRect().bottom ?? 0;
       document.documentElement.style.setProperty(
         "--help-button-top",
-        `${12 + height}px`,
+        `${bottom + 8}px`,
       );
     }
     updateOffset();
     const observer = new ResizeObserver(updateOffset);
+    if (headerRef.current) observer.observe(headerRef.current);
     if (bannerRef.current) observer.observe(bannerRef.current);
     window.addEventListener("resize", updateOffset);
     return () => {
@@ -152,7 +160,7 @@ export function MapScreen({
       window.removeEventListener("resize", updateOffset);
       document.documentElement.style.removeProperty("--help-button-top");
     };
-  }, [showTopBanner]);
+  }, [showTopBanner, showBannerOverlay]);
 
   // 전역 "도움 요청" 버튼(HelpButton)이 지금 보고 있는 포인트를 알아야 임원이
   // "통과 처리"할 수 있는(=locationId가 있는) 요청이 만들어진다. HelpButton은
@@ -184,22 +192,9 @@ export function MapScreen({
       <ParchmentStains />
       <ParchmentBurn outerWidth={14} innerWidth={9} insetPercent={0.25} />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col p-5">
-      {showTopBanner && (
-        <div ref={bannerRef}>
-          {aiJudgingDisabled && (
-            <div className="label-tech border-b border-accent bg-accent px-4 py-2 text-center text-[11px] font-bold text-white">
-              현재 AI 평가가 불가능해 임원의 수동 평가가 진행될 예정입니다. 사진 제출 후
-              &ldquo;임원 도움 요청&rdquo; 버튼을 눌러주세요.
-            </div>
-          )}
-          {allRegionsDone && (
-            <div className="label-tech border-b border-ink bg-ink px-4 py-2 text-center text-[11px] font-bold text-white">
-              모든 지역 미션 완료! 숙소로 돌아가세요.
-            </div>
-          )}
-        </div>
-      )}
-      <div className="relative border-b border-line px-4 py-3">
+      {/* 그룹명·스테퍼 헤더 — 작아서 접을 필요 없이 항상 문서 흐름 그대로 둔다.
+          배너(AI 판정 중단/숙소 복귀)는 이 아래 지도 영역 안에서 지도 위에 뜬다. */}
+      <div ref={headerRef} className="relative border-b border-line px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
             <p className="label-tech text-[10px] text-muted">선택된 그룹</p>
@@ -268,14 +263,18 @@ export function MapScreen({
           </div>
         )}
 
-        {/* 현재 위치 점 — 아래 지도 프레임의 목적지 배지로 연결선이 이어짐 */}
-        <span
-          className="absolute bottom-[-4px] h-[7px] w-[7px] -translate-x-1/2 translate-y-1/2 rounded-full bg-accent"
-          style={{
-            left: `${stepperPct * 100}%`,
-            boxShadow: "0 0 0 3px var(--color-paper)",
-          }}
-        />
+        {/* 현재 위치 점 — 아래 지도 프레임의 목적지 배지로 연결선이 이어짐.
+            연결될 배지가 없으면(=targetRegionName 없음, 예: 전 지역 완료) 이 점도
+            같이 숨긴다 — 안 그러면 아무 데도 안 이어지는 점만 덩그러니 남는다. */}
+        {targetRegionName && (
+          <span
+            className="absolute bottom-[-4px] h-[7px] w-[7px] -translate-x-1/2 translate-y-1/2 rounded-full bg-accent"
+            style={{
+              left: `${stepperPct * 100}%`,
+              boxShadow: "0 0 0 3px var(--color-paper)",
+            }}
+          />
+        )}
       </div>
 
       <div className="relative min-h-0 flex-1 p-2">
@@ -314,6 +313,45 @@ export function MapScreen({
               selectedPension={showPension}
               targetRegionId={targetRegionId}
             />
+
+            {/* 배너(AI 판정 중단/숙소 복귀 안내)는 문서 흐름을 밀어내리지 않고
+                지도 위에 뜬다 — 접으면 지도가 그만큼 넓게 보인다. */}
+            {showTopBanner && showBannerOverlay && (
+              <div
+                ref={bannerRef}
+                className="absolute inset-x-0 top-0 z-20 shadow-[0_8px_16px_-10px_rgba(20,18,12,0.5)]"
+              >
+                {aiJudgingDisabled && (
+                  <div className="label-tech border-b border-accent bg-accent px-4 py-2 text-center text-[11px] font-bold text-white">
+                    현재 AI 평가가 불가능해 임원의 수동 평가가 진행될 예정입니다. 사진 제출
+                    후 &ldquo;임원 도움 요청&rdquo; 버튼을 눌러주세요.
+                  </div>
+                )}
+                {allRegionsDone && (
+                  <div className="label-tech border-b border-ink bg-ink px-4 py-2 text-center text-[11px] font-bold text-white">
+                    모든 지역 미션 완료! 숙소로 돌아가세요.
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowBannerOverlay(false)}
+                  className="label-tech absolute top-1 right-1 rounded-full bg-black/30 px-1.5 py-0.5 text-[9px] font-bold text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* 배너를 접었을 때만 나타나는 재진입 탭 */}
+            {showTopBanner && !showBannerOverlay && (
+              <button
+                type="button"
+                onClick={() => setShowBannerOverlay(true)}
+                className="label-tech absolute top-2 left-1/2 z-20 -translate-x-1/2 rounded-full border border-line bg-paper-panel px-3 py-1 text-[10px] font-bold text-ink shadow-[0_4px_10px_-4px_rgba(20,18,12,0.35)]"
+              >
+                ▾ 안내 보기
+              </button>
+            )}
           </div>
 
           {showPension ? (
@@ -367,10 +405,12 @@ export function MapScreen({
         </div>
 
         {/* 연결선: 헤더의 현재 위치 점에서 아래로 이어져 목적지 배지에 닿는다 */}
-        <span
-          className="pointer-events-none absolute top-0 h-[14px] w-[1.5px] -translate-x-1/2 bg-accent"
-          style={{ left: `${stepperPct * 100}%` }}
-        />
+        {targetRegionName && (
+          <span
+            className="pointer-events-none absolute top-0 h-[14px] w-[1.5px] -translate-x-1/2 bg-accent"
+            style={{ left: `${stepperPct * 100}%` }}
+          />
+        )}
 
         {targetRegionName && (
           <div
