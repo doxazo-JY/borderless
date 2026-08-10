@@ -4,7 +4,6 @@ import { selectGroup } from "@/app/actions";
 import { getCurrentGroup } from "@/lib/group";
 import { getAppSettings } from "@/lib/settings";
 import { teamColor } from "@/lib/team-colors";
-import { BrandMark } from "@/components/BrandMark";
 import { MapDecoration } from "@/components/MapDecoration";
 import { ParchmentBurn } from "@/components/ParchmentBurn";
 import { ParchmentCompass } from "@/components/ParchmentCompass";
@@ -33,45 +32,34 @@ export default async function Home() {
       <MapDecoration />
       <ParchmentCompass className="parchment-compass-fixed" />
       <div className="map-selection-header relative z-10 text-center">
-        <BrandMark className="mx-auto mb-3 h-10 w-10" />
         <div className="flex items-center justify-center gap-3">
-          <span className="h-px w-8 bg-line" />
-          <p className="label-tech text-xs text-accent">Borderless</p>
-          <span className="h-px w-8 bg-line" />
+          <span className="h-px w-10 bg-line" />
+          <h1 className="label-tech text-2xl font-extrabold tracking-[0.15em] text-accent">
+            Borderless
+          </h1>
+          <span className="h-px w-10 bg-line" />
         </div>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight uppercase">
-          소속 선택
-        </h1>
-        <p className="mt-2 text-sm text-muted">소속된 팀과 조를 선택하세요</p>
       </div>
 
       <div className="relative z-10 grid w-full max-w-sm gap-6">
         {teams.map((team) => (
-          <div key={team.id}>
-            <h2
-              className="label-tech mb-2 text-xs font-bold"
-              style={{ color: teamColor(team.name) }}
-            >
-              {team.name}팀
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {team.groups.map((g) => (
-                <form key={g.id} action={selectGroup}>
-                  <input type="hidden" name="groupId" value={g.id} />
-                  <button
-                    type="submit"
-                    className="shadow-panel w-full rounded-lg border-2 py-4 text-lg font-bold transition-transform active:scale-[0.98]"
-                    style={{
-                      borderColor: teamColor(team.name),
-                      color: "var(--color-ink)",
-                      background: `color-mix(in srgb, ${teamColor(team.name)} 8%, var(--color-paper-panel))`,
-                    }}
-                  >
-                    {g.displayName}
-                  </button>
-                </form>
-              ))}
-            </div>
+          <div key={team.id} className="grid grid-cols-2 gap-3">
+            {team.groups.map((g) => (
+              <form key={g.id} action={selectGroup}>
+                <input type="hidden" name="groupId" value={g.id} />
+                <button
+                  type="submit"
+                  className="shadow-panel w-full rounded-lg border-2 py-4 text-lg font-bold transition-transform active:scale-[0.98]"
+                  style={{
+                    borderColor: teamColor(team.name),
+                    color: "var(--color-ink)",
+                    background: `color-mix(in srgb, ${teamColor(team.name)} 8%, var(--color-paper-panel))`,
+                  }}
+                >
+                  {g.displayName}
+                </button>
+              </form>
+            ))}
           </div>
         ))}
       </div>

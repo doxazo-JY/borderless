@@ -233,7 +233,10 @@ export function MapScreen({
               질문 카드
             </button>
             {!groupSelectionLocked && (
-              <form action={clearGroup}>
+              // form이 block 요소라 flex 정렬에서 버튼 높이가 미묘하게 어긋나던 것 —
+              // display:contents로 form 자체를 레이아웃에서 지우고 버튼이 바로
+              // 옆 버튼과 같은 flex item이 되게 한다.
+              <form action={clearGroup} className="contents">
                 <button
                   type="submit"
                   className="panel-link label-tech text-[10px] text-muted"
@@ -347,12 +350,16 @@ export function MapScreen({
 
             {/* 배너를 접었을 때만 나타나는 재진입 탭 — 화면 중앙은 전역 SOS
                 버튼(HelpButton, fixed)이 항상 차지하고 있어서 겹치지 않게
-                왼쪽에 둔다. */}
+                왼쪽에 둔다. top이 -1px인 이유: SOS 버튼은 fixed로 헤더 바로
+                아래(header.bottom + 8px)에 뜨는데, 이 탭은 지도 wrapper 기준
+                absolute라 wrapper 자체가 이미 그보다 9px(콘텐츠 영역 padding
+                8px + 프레임 border 1px) 아래에서 시작한다 — 그 차이를 상쇄해야
+                두 버튼 높이가 맞는다. */}
             {showTopBanner && !showBannerOverlay && (
               <button
                 type="button"
                 onClick={() => setShowBannerOverlay(true)}
-                className="label-tech absolute top-2 left-2 z-20 rounded-full border border-line bg-paper-panel px-3 py-1 text-[10px] font-bold text-ink shadow-[0_4px_10px_-4px_rgba(20,18,12,0.35)]"
+                className="panel-link label-tech absolute top-[-1px] left-2 z-20 text-[10px] font-bold text-ink"
               >
                 ▾ 안내 보기
               </button>
