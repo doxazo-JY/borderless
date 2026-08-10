@@ -25,7 +25,7 @@ export function PensionPanel({
   }[];
 }) {
   return (
-    <div className="parchment-panel relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line px-4 pt-4 pb-4 text-ink lg:h-full lg:max-h-none lg:w-[40%] lg:shrink-0 lg:border-t-0 lg:border-l">
+    <div className="parchment-panel relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-line px-4 pt-4 pb-4 text-ink lg:h-full lg:max-h-none lg:w-[40%] lg:flex-none lg:border-t-0 lg:border-l">
       <ParchmentStains idPrefix="pension-panel-stain" intensity={0.4} />
       <div className="mb-3 flex items-start justify-between">
         <div>
@@ -34,7 +34,7 @@ export function PensionPanel({
         </div>
         <button
           onClick={onClose}
-          className="label-tech text-[10px] text-muted underline underline-offset-2"
+          className="panel-link label-tech text-[10px] text-muted"
         >
           닫기
         </button>

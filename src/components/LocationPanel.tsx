@@ -272,32 +272,20 @@ export function LocationPanel({
   }
 
   const passed = result?.result === "passed";
-  // 통과 화면이나 실제 업로드 폼처럼 내용이 있는 상태만 패널을 넉넉하게 채움.
-  // "이미 다른 포인트에서 통과함"/"차례 아님"/"마감" 같은 짧은 안내 문구만 있을
-  // 때는 그 텍스트만큼만 차지하고 빈 여백을 억지로 만들지 않는다.
-  const isRoomy =
-    passed ||
-    (!location.regionCompletedElsewhere &&
-      isCurrentRegion &&
-      !location.isClosed &&
-      result?.result !== "closed" &&
-      result?.result !== "wrong_region");
 
   return (
     <div
-      className={`parchment-panel relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line px-4 pt-4 pb-4 text-ink lg:h-full lg:max-h-none lg:w-[40%] lg:shrink-0 lg:border-t-0 lg:border-l ${isRoomy ? "min-h-[45dvh] lg:min-h-0" : ""}`}
+      className="parchment-panel relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-line px-4 pt-4 pb-4 text-ink lg:h-full lg:max-h-none lg:w-[40%] lg:flex-none lg:border-t-0 lg:border-l"
     >
       <ParchmentStains idPrefix="location-panel-stain" intensity={0.4} />
-      <div className="mb-3 flex items-start justify-between">
-        <div>
-          <p className="label-tech text-[10px] text-muted">
-            {location.regionName}지역
-          </p>
-          <h2 className="text-base font-bold">{location.name}</h2>
-        </div>
+      <div className="mb-2 flex items-baseline gap-2">
+        <h2 className="text-base font-bold">{location.name}</h2>
+        <p className="label-tech text-[10px] text-muted">
+          {location.regionName}지역
+        </p>
         <button
           onClick={onClose}
-          className="label-tech text-[10px] text-muted underline underline-offset-2"
+          className="panel-link label-tech ml-auto text-[10px] text-muted"
         >
           닫기
         </button>
@@ -371,10 +359,10 @@ export function LocationPanel({
                       src={location.referencePhotoUrl}
                       alt="기준 사진"
                       onZoom={setZoomSrc}
-                      className="h-44 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
+                      className="h-28 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
                     />
                   ) : (
-                    <div className="flex h-44 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                    <div className="flex h-28 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                       미등록
                     </div>
                   )}
@@ -388,10 +376,10 @@ export function LocationPanel({
                       src={result.photoUrl}
                       alt="내가 제출한 사진"
                       onZoom={setZoomSrc}
-                      className="h-44 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
+                      className="h-28 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
                     />
                   ) : (
-                    <div className="flex h-44 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                    <div className="flex h-28 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                       기록 없음
                     </div>
                   )}
@@ -484,10 +472,10 @@ export function LocationPanel({
                   src={location.referencePhotoUrl}
                   alt="기준 사진"
                   onZoom={setZoomSrc}
-                  className="h-44 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
+                  className="h-28 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
                 />
               ) : (
-                <div className="flex h-44 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                <div className="flex h-28 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                   기준 사진 미등록 (더미 데이터)
                 </div>
               )}
@@ -502,17 +490,17 @@ export function LocationPanel({
                   src={previewUrl ?? result!.photoUrl!}
                   alt="업로드할 사진"
                   onZoom={setZoomSrc}
-                  className="h-44 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
+                  className="h-28 w-full lg:h-72 rounded-md border border-line object-contain bg-paper"
                 />
               ) : (
-                <div className="flex h-44 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
+                <div className="flex h-28 w-full lg:h-72 items-center justify-center rounded-md border border-dashed border-line bg-paper text-xs text-muted">
                   아직 없음
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <label className="w-full cursor-pointer rounded-md border border-line bg-paper-panel px-3 py-2 text-center text-sm font-medium">
               {file ? "사진 다시 선택" : "사진 선택"}
               <input
@@ -534,7 +522,7 @@ export function LocationPanel({
           {(result?.result === "failed" || result?.result === "ai_error") && (
             <button
               onClick={resetForRetry}
-              className="text-xs text-muted underline underline-offset-2"
+              className="panel-link text-xs text-muted"
             >
               처음부터 다시
             </button>

@@ -114,6 +114,27 @@ export function MapScreen({
   const [steps, setSteps] = useState<Record<string, PanelStep>>({});
   const router = useRouter();
 
+  // 위 useState는 마운트 시점 props로 딱 한 번만 초기화되기 때문에, 그 이후
+  // router.refresh()로 서버가 새 passedInfo(예: 임원이 수동 통과 처리)를 내려줘도
+  // 이 로컬 state에는 절대 반영이 안 됐다 — 폴링 주기를 아무리 줄여도 화면이 안
+  // 바뀌던 진짜 원인이 이거였다. locations prop이 (router.refresh로) 바뀔 때마다
+  // 서버가 내려준 최신 값으로 다시 덮어써서 항상 동기화되게 한다.
+  // useEffect 안에서 setState를 하면 렌더가 한 번 더 튀는 문제가 있어서(React 권장
+  // 안티패턴), 대신 렌더 도중에 이전 locations와 비교해서 바뀌었을 때만 즉시
+  // setState하는 "렌더 중 state 조정" 패턴을 쓴다.
+  const [prevLocations, setPrevLocations] = useState(locations);
+  if (locations !== prevLocations) {
+    setPrevLocations(locations);
+    setResults((prev) => {
+      const next = { ...prev };
+      for (const loc of locations) {
+        const r = regionInitialResult(loc);
+        if (r) next[loc.id] = r;
+      }
+      return next;
+    });
+  }
+
   // 서버가 내려주는 정보(AI 판정 중단 배너, 같은 팀 다른 조 현황, 마감 여부 등)가
   // 참가자가 직접 새로고침하지 않아도 주기적으로 갱신되도록 폴링한다. 이 화면
   // 자체는 서버 컴포넌트가 매번 다시 계산해 내려주므로, 여기서 할 일은 그 다시
@@ -123,7 +144,7 @@ export function MapScreen({
   useEffect(() => {
     const interval = setInterval(() => {
       router.refresh();
-    }, 15000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [router]);
 
@@ -174,12 +195,6 @@ export function MapScreen({
   }, [selectedId]);
 
   const selectedLocation = locations.find((l) => l.id === selectedId) ?? null;
-  const currentIndex = regionProgress.findIndex((p) => p.status === "current");
-  const stepperPct =
-    regionProgress.length > 0
-      ? ((currentIndex >= 0 ? currentIndex : regionProgress.length - 1) + 0.5) /
-        regionProgress.length
-      : 0.5;
   // 이미 이 지역에서 AI 판정은 통과하고 완료(영상 업로드/정답 제출)만 남은 상태면
   // "다음 목적지"라는 말이 어색하므로("이미 여기 있는데 다음 목적지가 여기?"),
   // 문구를 다르게 보여준다.
@@ -194,12 +209,12 @@ export function MapScreen({
       <div className="relative z-10 flex min-h-0 flex-1 flex-col p-5">
       {/* 그룹명·스테퍼 헤더 — 작아서 접을 필요 없이 항상 문서 흐름 그대로 둔다.
           배너(AI 판정 중단/숙소 복귀)는 이 아래 지도 영역 안에서 지도 위에 뜬다. */}
-      <div ref={headerRef} className="relative border-b border-line px-4 py-3">
+      <div ref={headerRef} className="relative border-b border-line px-4 py-1.5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="label-tech text-[10px] text-muted">선택된 그룹</p>
+            <p className="label-tech text-[9px] text-muted">선택된 그룹</p>
             <h1
-              className="text-lg font-bold"
+              className="text-base leading-tight font-bold"
               style={{ color: teamColor(group.teamName) }}
             >
               {group.displayName}
@@ -213,17 +228,17 @@ export function MapScreen({
                 setShowPension(false);
                 setShowTopics(true);
               }}
-              className="label-tech text-[10px] text-ink underline underline-offset-2"
+              className="panel-link label-tech text-[10px] text-ink"
             >
-              대화 주제
+              질문 카드
             </button>
             {!groupSelectionLocked && (
               <form action={clearGroup}>
                 <button
                   type="submit"
-                  className="label-tech text-[10px] text-muted underline underline-offset-2"
+                  className="panel-link label-tech text-[10px] text-muted"
                 >
-                  다시 선택
+                  팀 다시 선택
                 </button>
               </form>
             )}
@@ -231,7 +246,7 @@ export function MapScreen({
         </div>
 
         {regionProgress.length > 0 && (
-          <div className="mt-2">
+          <div className="mt-1">
             <div className="flex gap-[3px]">
               {regionProgress.map((p) => (
                 <span
@@ -246,11 +261,11 @@ export function MapScreen({
                 />
               ))}
             </div>
-            <div className="mt-1 flex gap-[3px]">
+            <div className="mt-0.5 flex gap-[3px]">
               {regionProgress.map((p) => (
                 <span
                   key={p.regionId}
-                  className={`label-tech flex-1 text-center text-[9px] ${
+                  className={`label-tech flex-1 text-center text-[9px] leading-tight ${
                     p.status === "current"
                       ? "font-bold text-accent"
                       : "text-muted"
@@ -263,18 +278,6 @@ export function MapScreen({
           </div>
         )}
 
-        {/* 현재 위치 점 — 아래 지도 프레임의 목적지 배지로 연결선이 이어짐.
-            연결될 배지가 없으면(=targetRegionName 없음, 예: 전 지역 완료) 이 점도
-            같이 숨긴다 — 안 그러면 아무 데도 안 이어지는 점만 덩그러니 남는다. */}
-        {targetRegionName && (
-          <span
-            className="absolute bottom-[-4px] h-[7px] w-[7px] -translate-x-1/2 translate-y-1/2 rounded-full bg-accent"
-            style={{
-              left: `${stepperPct * 100}%`,
-              boxShadow: "0 0 0 3px var(--color-paper)",
-            }}
-          />
-        )}
       </div>
 
       <div className="relative min-h-0 flex-1 p-2">
@@ -342,12 +345,14 @@ export function MapScreen({
               </div>
             )}
 
-            {/* 배너를 접었을 때만 나타나는 재진입 탭 */}
+            {/* 배너를 접었을 때만 나타나는 재진입 탭 — 화면 중앙은 전역 SOS
+                버튼(HelpButton, fixed)이 항상 차지하고 있어서 겹치지 않게
+                왼쪽에 둔다. */}
             {showTopBanner && !showBannerOverlay && (
               <button
                 type="button"
                 onClick={() => setShowBannerOverlay(true)}
-                className="label-tech absolute top-2 left-1/2 z-20 -translate-x-1/2 rounded-full border border-line bg-paper-panel px-3 py-1 text-[10px] font-bold text-ink shadow-[0_4px_10px_-4px_rgba(20,18,12,0.35)]"
+                className="label-tech absolute top-2 left-2 z-20 rounded-full border border-line bg-paper-panel px-3 py-1 text-[10px] font-bold text-ink shadow-[0_4px_10px_-4px_rgba(20,18,12,0.35)]"
               >
                 ▾ 안내 보기
               </button>
@@ -403,25 +408,6 @@ export function MapScreen({
             </div>
           )}
         </div>
-
-        {/* 연결선: 헤더의 현재 위치 점에서 아래로 이어져 목적지 배지에 닿는다 */}
-        {targetRegionName && (
-          <span
-            className="pointer-events-none absolute top-0 h-[14px] w-[1.5px] -translate-x-1/2 bg-accent"
-            style={{ left: `${stepperPct * 100}%` }}
-          />
-        )}
-
-        {targetRegionName && (
-          <div
-            className="label-tech absolute top-2 z-40 -translate-x-1/2 rounded-md border border-line bg-white/90 px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap text-ink shadow-[0_3px_10px_rgba(20,18,12,0.12)]"
-            style={{ left: `${stepperPct * 100}%` }}
-          >
-            {targetRegionAwaitingCompletion
-              ? `${targetRegionName}지역 · 미션 완료 남음`
-              : `현재 목적지 · ${targetRegionName}지역`}
-          </div>
-        )}
       </div>
       </div>
     </main>

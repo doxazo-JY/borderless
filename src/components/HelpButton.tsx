@@ -38,7 +38,7 @@ export function HelpButton() {
     return (
       <div
         style={{ top: "var(--help-button-top, 12px)" }}
-        className="fixed left-1/2 z-[60] w-[min(90vw,320px)] -translate-x-1/2 rounded-xl border-2 border-ink bg-paper-panel p-3 shadow-lg"
+        className="fixed left-1/2 z-[60] w-[min(90vw,320px)] -translate-x-1/2 lg:left-[30%] rounded-xl border-2 border-ink bg-paper-panel p-3 shadow-lg"
       >
         <p className="label-tech mb-1 text-[10px] text-accent">도움 요청</p>
         <textarea
@@ -84,7 +84,7 @@ export function HelpButton() {
     <button
       onClick={() => setState("composing")}
       style={{ top: "var(--help-button-top, 12px)" }}
-      className="label-tech fixed left-1/2 z-[60] -translate-x-1/2 rounded-full border-2 border-ink bg-red-600 px-2.5 py-1.5 text-[9px] font-bold whitespace-nowrap text-white shadow-lg"
+      className="label-tech fixed left-1/2 z-[60] -translate-x-1/2 rounded-full border-2 border-ink bg-red-600 px-2.5 py-1.5 text-[9px] font-bold whitespace-nowrap text-white shadow-lg lg:left-[30%]"
     >
       {state === "sent" ? "요청 완료!" : "🆘 도움 요청"}
     </button>

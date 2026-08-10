@@ -31,22 +31,22 @@ export function ConversationTopicPanel({ onClose }: { onClose: () => void }) {
   const [topic, setTopic] = useState<ConversationTopic>(() => pickNextTopic());
 
   return (
-    <div className="parchment-panel relative z-10 flex max-h-[60dvh] flex-col overflow-y-auto border-t border-line px-4 pt-4 pb-4 text-ink lg:h-full lg:max-h-none lg:w-[40%] lg:shrink-0 lg:border-t-0 lg:border-l">
+    <div className="parchment-panel relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-line px-4 pt-4 pb-4 text-ink lg:h-full lg:max-h-none lg:w-[40%] lg:flex-none lg:border-t-0 lg:border-l">
       <ParchmentStains idPrefix="topic-panel-stain" intensity={0.4} />
       <div className="mb-3 flex items-start justify-between">
         <div>
           <p className="label-tech text-[10px] text-muted">이동 중 대화</p>
-          <h2 className="text-base font-bold">대화 주제</h2>
+          <h2 className="text-base font-bold">질문 카드</h2>
         </div>
         <button
           onClick={onClose}
-          className="label-tech text-[10px] text-muted underline underline-offset-2"
+          className="panel-link label-tech text-[10px] text-muted"
         >
           닫기
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-lg border border-line bg-paper px-5 py-10 text-center shadow-[0_2px_6px_rgba(20,18,12,0.05)]">
+      <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-line bg-paper px-5 py-5 text-center shadow-[0_2px_6px_rgba(20,18,12,0.05)] lg:flex-1 lg:gap-4 lg:py-10">
         <p className="label-tech text-[10px] text-accent">주제</p>
         <p className="text-lg leading-snug font-semibold break-keep">{topic.q}</p>
         {topic.sub && (

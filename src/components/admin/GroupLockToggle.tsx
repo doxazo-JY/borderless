@@ -19,7 +19,7 @@ export function GroupLockToggle({ locked }: { locked: boolean }) {
         onClick={(e) => {
           const msg = locked
             ? "팀 선택 잠금을 해제할까요? 다시 참가자들이 팀을 바꿀 수 있게 됩니다."
-            : "팀 선택을 잠글까요? 이후 참가자는 '다시 선택'으로 다른 팀/조로 바꿀 수 없습니다 (아직 팀을 안 고른 기기는 계속 선택 가능).";
+            : "팀 선택을 잠글까요? 이후 참가자는 '팀 다시 선택'으로 다른 팀/조로 바꿀 수 없습니다 (아직 팀을 안 고른 기기는 계속 선택 가능).";
           if (!confirm(msg)) e.preventDefault();
         }}
         className="ml-auto rounded bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white"

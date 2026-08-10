@@ -46,6 +46,10 @@
 body {
   background: var(--color-paper);
   color: var(--color-ink);
+  /* 한국어는 글자 단위로 줄바꿈되면 읽기 어려워서(예: "임원 도"/"움 요청"처럼
+     단어가 쪼개짐) 어절 단위로만 끊기게 전역으로 강제한다. 개별 요소마다
+     break-keep 클래스를 붙일 필요 없이 기본값을 바꾸는 쪽. */
+  word-break: keep-all;
   font-family:
     var(--font-geist-sans),
     -apple-system,
@@ -66,6 +70,23 @@ body {
   box-shadow:
     0 1px 2px rgba(28, 33, 29, 0.04),
     0 10px 24px -16px rgba(28, 33, 29, 0.22);
+}
+
+/* 양피지 배경/얼룩 위에 얇은 밑줄 링크만 두면(연한 회색+텍스처) 잘 안 보여서,
+   작은 흰색 계열 배경 칩을 얹어 배경이 뭐든 항상 읽히게 한다. "대화 주제",
+   "다시 선택", "닫기" 같은 지도 화면의 보조 링크용.
+   radius는 알약형(rounded-full)이 아니라 6px 각진 카드로 — 이 프로젝트 디자인
+   원칙(2026-07-15)에서 이미 "둥근 알약형이 장난감 같다"고 걷어낸 적이 있어서,
+   같은 실수를 반복하지 않으려고 처음부터 각진 쪽으로 맞춘다. */
+.panel-link {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  border: 1px solid var(--color-line);
+  background: color-mix(in srgb, var(--color-paper-panel) 88%, transparent);
+  padding: 0.2rem 0.6rem;
+  color: var(--color-ink);
+  box-shadow: 0 1px 3px rgba(20, 18, 12, 0.12);
 }
 
 /* 팀 선택 화면 배경 — 그을린 양피지 실험. 이 느낌은 앱 전체 톤(밝은 종이+잉크+오렌지)과
