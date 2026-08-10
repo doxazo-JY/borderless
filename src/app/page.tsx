@@ -32,16 +32,16 @@ export default async function Home() {
       <MapDecoration />
       <ParchmentCompass className="parchment-compass-fixed" />
       <div className="map-selection-header relative z-10 text-center">
-        <div className="flex items-center justify-center gap-3">
-          <span className="h-px w-10 bg-line" />
+        <div className="flex items-center justify-center gap-2">
+          <span className="h-px w-6 bg-line" />
           <h1 className="label-tech text-2xl font-extrabold tracking-[0.15em] text-accent">
             Borderless
           </h1>
-          <span className="h-px w-10 bg-line" />
+          <span className="h-px w-6 bg-line" />
         </div>
       </div>
 
-      <div className="relative z-10 grid w-full max-w-sm gap-6">
+      <div className="relative z-10 grid w-full max-w-xs gap-6">
         {teams.map((team) => (
           <div key={team.id} className="grid grid-cols-2 gap-3">
             {team.groups.map((g) => (
