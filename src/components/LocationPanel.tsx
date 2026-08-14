@@ -457,9 +457,25 @@ export function LocationPanel({
       ) : (
         <div className="space-y-3">
           {(result?.result === "failed" || result?.result === "ai_error") && (
-            <p className="rounded-md border border-accent bg-paper-panel p-2 text-sm font-medium text-accent">
-              {result.message}
-            </p>
+            <div className="space-y-2">
+              <p className="rounded-md border border-accent bg-paper-panel p-2 text-sm font-medium text-accent">
+                {result.message}
+              </p>
+              {/* 도움 요청 전에 스스로 고쳐서 재시도할 수 있는 흔한 원인들 —
+                  판정 실패 사유가 짧게만 나올 때가 있어서, 그것과 별개로
+                  항상 같이 보여주는 일반적인 체크리스트. */}
+              <details className="rounded-md border border-line bg-paper p-2 text-xs text-muted">
+                <summary className="cursor-pointer font-medium text-ink">
+                  자주 막히는 이유
+                </summary>
+                <ul className="mt-1.5 list-disc space-y-1 pl-4">
+                  <li>기준 사진과 비슷한 각도·거리로 찍었는지</li>
+                  <li>기준 사진에 보이는 배경(건물, 간판, 사물 등)이 그대로 나왔는지</li>
+                  <li>너무 어둡거나 흔들려서 잘 안 보이는 사진은 아닌지</li>
+                  <li>인물이 함께 나와야 하는 미션이면 조원이 다 나왔는지</li>
+                </ul>
+              </details>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-2">

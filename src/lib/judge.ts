@@ -32,7 +32,7 @@ export async function judgePhotoMatch({
         content: [
           {
             type: "text",
-            text: `${judgePrompt}\n\n첫 번째 이미지는 기준 사진이고, 두 번째 이미지는 참가자가 방금 업로드한 사진입니다. 두 사진이 같은 장소/사물을 나타내는지 판단해서 반드시 아래 JSON 형식으로만 답하세요:\n{"passed": true 또는 false, "reason": "판단 이유를 한국어로 한두 문장"}`,
+            text: `${judgePrompt}\n\n첫 번째 이미지는 기준 사진이고, 두 번째 이미지는 참가자가 방금 업로드한 사진입니다. 두 사진이 같은 장소/사물을 나타내는지 판단해서 반드시 아래 JSON 형식으로만 답하세요:\n{"passed": true 또는 false, "reason": "판단 이유를 한국어로 한두 문장"}\n\nreason 작성 시: 실패(passed: false)라면 "왜 다른지"보다 "다시 찍을 때 뭘 고치면 되는지"를 구체적으로 쓰세요 (예: "오른쪽 벤치가 사진에 안 보여요"처럼 무엇이 빠지거나 다른지 짚어주기). 참가자가 이 문장만 보고 바로 재시도할 수 있어야 합니다.`,
           },
           { type: "image_url", image_url: { url: referencePhotoUrl } },
           { type: "image_url", image_url: { url: uploadedPhotoUrl } },
