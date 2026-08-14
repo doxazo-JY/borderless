@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
+import { HelpRequestAlert } from "@/components/admin/HelpRequestAlert";
 import { GroupLockToggle } from "@/components/admin/GroupLockToggle";
 import { AiJudgingToggle } from "@/components/admin/AiJudgingToggle";
 import { DownloadLink } from "@/components/admin/DownloadLink";
@@ -133,6 +134,7 @@ export default async function TeamPage() {
 
   return (
     <main className="mx-auto max-w-[1600px] space-y-8 p-4">
+      <HelpRequestAlert openRequestIds={openHelpRequests.map((hr) => hr.id)} />
       <h1 className="text-xl font-bold">팀</h1>
 
       {/* 팀/조 세팅 — 조원 이름(참가자가 입력 안 해도 되도록 어드민이 미리 등록)과

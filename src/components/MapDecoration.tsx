@@ -28,6 +28,91 @@ const INK_SPLATTER_SETS: [number, number, number, number, number, number, 0 | 1]
   [],
 ];
 
+type Mark = { x: number; y: number; rotate: number };
+
+// PC(lg: 1024px~) 원래 배치 — 화면 가장자리에서 중앙 쪽으로 모여드는 느낌.
+const DESKTOP_ROUTE_PATHS = [
+  "M -20 80 C 60 60, 90 160, 170 190 S 260 300, 340 300",
+  "M 420 40 C 320 70, 300 150, 220 210 S 150 320, 60 360",
+  "M -30 480 C 70 470, 110 400, 190 400 S 300 340, 410 260",
+  "M 200 620 C 210 540, 160 500, 200 440 S 300 400, 300 320",
+];
+const DESKTOP_MARKS: Mark[] = [
+  { x: 340, y: 300, rotate: -6 },
+  { x: 60, y: 360, rotate: 8 },
+  { x: 410, y: 260, rotate: -4 },
+  { x: 300, y: 320, rotate: 5 },
+];
+
+// 모바일 전용 배치 — 버튼 카드가 화면 폭을 거의 다 차지해서, PC와 같은 좌표를
+// 쓰면 카드에 가려지거나(중앙 쪽) 그을린 테두리에 잘린다(가장자리 쪽). 카드
+// 사이사이 여백(제목 옆, 팀 행 사이, 맨 아래)으로 따로 당겨온 좌표.
+const MOBILE_ROUTE_PATHS = [
+  "M -20 80 C 60 70, 200 130, 280 145 S 310 150, 320 150",
+  "M 420 40 C 320 80, 180 200, 120 240 S 90 260, 80 270",
+  "M -30 480 C 70 460, 230 380, 290 355 S 315 350, 320 350",
+  "M 200 620 C 195 580, 180 530, 170 510 S 170 510, 170 510",
+];
+const MOBILE_MARKS: Mark[] = [
+  { x: 320, y: 150, rotate: -6 },
+  { x: 80, y: 270, rotate: 8 },
+  { x: 320, y: 350, rotate: -4 },
+  { x: 170, y: 510, rotate: 5 },
+];
+
+function RoutesAndMarks({
+  routePaths,
+  marks,
+}: {
+  routePaths: string[];
+  marks: Mark[];
+}) {
+  return (
+    <>
+      <g filter="url(#sketchy-fine)">
+        {routePaths.map((d, i) => (
+          <path
+            key={i}
+            className="route-map-decoration__trail"
+            d={d}
+            stroke={AGED_INK}
+            filter="url(#ink-mottle)"
+          />
+        ))}
+      </g>
+
+      {marks.map((mark, i) => (
+        <g
+          key={i}
+          className="route-map-decoration__pin"
+          transform={`translate(${mark.x} ${mark.y}) rotate(${mark.rotate})`}
+        >
+          {/* 두 획(45°/-45°) — 삐뚤빼뚤한 다각형(BRUSH_STROKE_JAGGED) + 양 끝이
+              옅어지는 그라디언트 채우기로 "붓으로 스친 자국"을 낸다. */}
+          <path d={BRUSH_STROKE_JAGGED} fill="url(#brush-fade-1)" transform="rotate(45)" />
+          <path d={BRUSH_STROKE_JAGGED} fill="url(#brush-fade-2)" transform="rotate(-45)" />
+          {/* 붓 자국 주변에 흩뿌려진 작은 잉크 튀김 — 완전한 원이 아니라 살짝 찌그러진
+              타원(rx≠ry)에 회전을 줘서 튀긴 자국처럼 불규칙하게 보이게 한다. */}
+          {INK_SPLATTER_SETS[i % INK_SPLATTER_SETS.length].map(
+            ([dx, dy, rx, ry, rot, op, colorIdx], si) => (
+              <ellipse
+                key={si}
+                cx={dx}
+                cy={dy}
+                rx={rx}
+                ry={ry}
+                transform={`rotate(${rot} ${dx} ${dy})`}
+                fill={colorIdx === 0 ? BRUSH_INK_1 : BRUSH_INK_2}
+                fillOpacity={op}
+              />
+            ),
+          )}
+        </g>
+      ))}
+    </>
+  );
+}
+
 export function MapDecoration() {
   return (
     <svg
@@ -81,69 +166,14 @@ export function MapDecoration() {
         </linearGradient>
       </defs>
 
-      {/* 루트/X마크를 버튼 카드 사이사이 여백(제목 옆, 팀 행과 행 사이, 맨 아래)에
-          배치 — 화면 가장자리로 너무 밀어내면 그을린 테두리에 잘려서 거의 안
-          보이니, 카드 안쪽 여백 쪽으로 당겨둔다. */}
-      <g filter="url(#sketchy-fine)">
-        <path
-          className="route-map-decoration__trail"
-          d="M -20 80 C 60 70, 200 130, 280 145 S 310 150, 320 150"
-          stroke={AGED_INK}
-          filter="url(#ink-mottle)"
-        />
-        <path
-          className="route-map-decoration__trail"
-          d="M 420 40 C 320 80, 180 200, 120 240 S 90 260, 80 270"
-          stroke={AGED_INK}
-          filter="url(#ink-mottle)"
-        />
-        <path
-          className="route-map-decoration__trail"
-          d="M -30 480 C 70 460, 230 380, 290 355 S 315 350, 320 350"
-          stroke={AGED_INK}
-          filter="url(#ink-mottle)"
-        />
-        <path
-          className="route-map-decoration__trail"
-          d="M 200 620 C 195 580, 180 530, 170 510 S 170 510, 170 510"
-          stroke={AGED_INK}
-          filter="url(#ink-mottle)"
-        />
+      {/* 모바일 전용 배치 — lg:부터는 숨김 */}
+      <g className="lg:hidden">
+        <RoutesAndMarks routePaths={MOBILE_ROUTE_PATHS} marks={MOBILE_MARKS} />
       </g>
-
-      {[
-        { x: 320, y: 150, rotate: -6 },
-        { x: 80, y: 270, rotate: 8 },
-        { x: 320, y: 350, rotate: -4 },
-        { x: 170, y: 510, rotate: 5 },
-      ].map((mark, i) => (
-        <g
-          key={i}
-          className="route-map-decoration__pin"
-          transform={`translate(${mark.x} ${mark.y}) rotate(${mark.rotate})`}
-        >
-          {/* 두 획(45°/-45°) — 삐뚤빼뚤한 다각형(BRUSH_STROKE_JAGGED) + 양 끝이
-              옅어지는 그라디언트 채우기로 "붓으로 스친 자국"을 낸다. */}
-          <path d={BRUSH_STROKE_JAGGED} fill="url(#brush-fade-1)" transform="rotate(45)" />
-          <path d={BRUSH_STROKE_JAGGED} fill="url(#brush-fade-2)" transform="rotate(-45)" />
-          {/* 붓 자국 주변에 흩뿌려진 작은 잉크 튀김 — 완전한 원이 아니라 살짝 찌그러진
-              타원(rx≠ry)에 회전을 줘서 튀긴 자국처럼 불규칙하게 보이게 한다. */}
-          {INK_SPLATTER_SETS[i % INK_SPLATTER_SETS.length].map(
-            ([dx, dy, rx, ry, rot, op, colorIdx], si) => (
-              <ellipse
-                key={si}
-                cx={dx}
-                cy={dy}
-                rx={rx}
-                ry={ry}
-                transform={`rotate(${rot} ${dx} ${dy})`}
-                fill={colorIdx === 0 ? BRUSH_INK_1 : BRUSH_INK_2}
-                fillOpacity={op}
-              />
-            ),
-          )}
-        </g>
-      ))}
+      {/* PC 원래 배치 — lg: 미만에서는 숨김 */}
+      <g className="hidden lg:block">
+        <RoutesAndMarks routePaths={DESKTOP_ROUTE_PATHS} marks={DESKTOP_MARKS} />
+      </g>
     </svg>
   );
 }

@@ -655,7 +655,7 @@ export function NaverMap({
         </div>
       )}
       {status === "ready" && locationDenied && (
-        <div className="label-tech absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border-2 border-ink bg-paper px-3 py-1.5 text-[10px] text-ink shadow">
+        <div className="label-tech absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border-2 border-ink bg-paper px-3 py-1.5 text-[10px] text-ink shadow-[0_4px_14px_-4px_rgba(20,18,12,0.35)]">
           위치 권한이 없어 내 위치는 표시되지 않아요
         </div>
       )}
@@ -664,7 +664,7 @@ export function NaverMap({
           onClick={requestCompassPermission}
           className="label-tech absolute bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-full border-2 border-ink bg-accent px-4 py-2.5 text-[11px] font-bold whitespace-nowrap text-white shadow-[0_4px_14px_-2px_rgba(225,89,28,0.6)]"
         >
-          🧭 나침반 방향 표시 켜기
+          나침반 방향 표시 켜기
         </button>
       )}
       {status === "ready" && (
@@ -697,7 +697,7 @@ export function NaverMap({
           <button
             onClick={() => setShowLegend((v) => !v)}
             aria-label="마커 색 설명"
-            className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink bg-paper-panel text-xs font-bold text-ink shadow"
+            className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink bg-paper-panel text-xs font-bold text-ink shadow-[0_2px_8px_rgba(20,18,12,0.25)]"
           >
             ?
           </button>

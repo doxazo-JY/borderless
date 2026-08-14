@@ -48,7 +48,7 @@ function ZoomableImage({
         className={`cursor-pointer ${className}`}
       />
       <span className="pointer-events-none absolute right-1.5 bottom-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-white">
-        🔍 확대
+        확대
       </span>
     </div>
   );
@@ -549,7 +549,7 @@ export function LocationPanel({
                 있어 하단 중앙으로 옮김 — 어차피 사진/배경 아무 곳이나 탭해도 닫힌다. */}
             <button
               onClick={() => setZoomSrc(null)}
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-bold text-ink shadow"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-bold text-ink shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
             >
               닫기
             </button>

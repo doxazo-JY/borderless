@@ -69,7 +69,7 @@ export function PensionPanel({
               {earnedIngredients.map((ing) => (
                 <li
                   key={ing.id}
-                  className="rounded-full border border-line bg-paper px-2 py-1 text-xs"
+                  className="rounded-md border border-line bg-paper px-2 py-1 text-xs"
                 >
                   {ing.name}
                 </li>
