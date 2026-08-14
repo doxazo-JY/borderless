@@ -34,12 +34,15 @@ export async function POST(request: Request) {
   // 가고 씹히는 문제가 있었다. after()로 감싸면 응답은 그대로 즉시 나가면서도
   // 이 콜백이 끝날 때까지 함수가 살아있게 Vercel이 보장해준다.
   const where = location ? `${location.region.name}지역 · ${location.name}` : "장소 미지정";
-  after(() =>
-    sendNtfyNotification(
+  console.log("[help-requests] scheduling ntfy notification, topic set:", !!process.env.NTFY_TOPIC);
+  after(async () => {
+    console.log("[help-requests] after() callback started");
+    await sendNtfyNotification(
       `도움 요청 — ${group.displayName}${requesterName ? ` (${requesterName})` : ""}`,
       `${where}${message ? `\n"${message}"` : ""}`,
-    ),
-  );
+    );
+    console.log("[help-requests] after() callback finished");
+  });
 
   return NextResponse.json({ ok: true });
 }

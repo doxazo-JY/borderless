@@ -12,7 +12,7 @@ export async function sendNtfyNotification(title: string, message: string): Prom
   if (!topic) return;
 
   try {
-    await fetch("https://ntfy.sh/", {
+    const res = await fetch("https://ntfy.sh/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -23,7 +23,10 @@ export async function sendNtfyNotification(title: string, message: string): Prom
         tags: ["sos"],
       }),
     });
-  } catch {
+    // 원인 파악용 임시 로그 — Vercel 함수 로그에서 실제로 뭐가 문제인지 보려고.
+    console.log("[ntfy] sent", res.status, await res.text());
+  } catch (err) {
+    console.error("[ntfy] failed", err);
     // 알림은 어디까지나 보조 수단 — 실패해도 도움 요청 저장 자체는 이미 끝난 뒤라 무시.
   }
 }
