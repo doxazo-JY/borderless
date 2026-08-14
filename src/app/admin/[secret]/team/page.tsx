@@ -7,6 +7,7 @@ import { DownloadLink } from "@/components/admin/DownloadLink";
 import { BulkDownloadButton, type DownloadFile } from "@/components/admin/BulkDownloadButton";
 import { getAppSettings } from "@/lib/settings";
 import {
+  acknowledgeHelpRequest,
   confirmGrant,
   failHelpRequest,
   manualPassSubmission,
@@ -267,6 +268,11 @@ export default async function TeamPage() {
                     ? `${hr.location.region.name}지역 · ${hr.location.name}`
                     : "장소 지정 없음"}{" "}
                   · {new Date(hr.createdAt).toLocaleTimeString("ko-KR")}
+                  {hr.acknowledgedAt && (
+                    <span className="ml-1 font-medium text-emerald-600">
+                      · 확인함 {new Date(hr.acknowledgedAt).toLocaleTimeString("ko-KR")}
+                    </span>
+                  )}
                 </p>
                 {hr.message && (
                   <p className="mt-2 rounded border border-red-100 bg-white p-3 text-base leading-snug text-zinc-800">
@@ -309,6 +315,14 @@ export default async function TeamPage() {
               )}
 
               <div className="flex flex-wrap items-center gap-2">
+                {!hr.acknowledgedAt && (
+                  <form action={acknowledgeHelpRequest}>
+                    <input type="hidden" name="id" value={hr.id} />
+                    <button className="rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700">
+                      확인함 (참가자에게 알림)
+                    </button>
+                  </form>
+                )}
                 {hr.location && (
                   <form action={passHelpRequest}>
                     <input type="hidden" name="helpRequestId" value={hr.id} />

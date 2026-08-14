@@ -23,8 +23,9 @@ export async function sendNtfyNotification(title: string, message: string): Prom
         tags: ["sos"],
       }),
     });
-    // 원인 파악용 임시 로그 — Vercel 함수 로그에서 실제로 뭐가 문제인지 보려고.
-    console.log("[ntfy] sent", res.status, await res.text());
+    if (!res.ok) {
+      console.error("[ntfy] non-ok response", res.status, await res.text());
+    }
   } catch (err) {
     console.error("[ntfy] failed", err);
     // 알림은 어디까지나 보조 수단 — 실패해도 도움 요청 저장 자체는 이미 끝난 뒤라 무시.

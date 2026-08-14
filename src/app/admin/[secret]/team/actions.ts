@@ -106,6 +106,22 @@ export async function resetAllSubmissions() {
   refresh();
 }
 
+// "확인함"만 눌러서 참가자에게 먼저 알려준다 — 아직 통과/반려/해결까지는 안
+// 갔지만 최소한 요청이 임원한테 닿았다는 것만 빠르게 표시. 여러 도움 요청이
+// 몰려서 처리에 시간이 걸릴 때, 참가자가 "요청이 가긴 한 건가" 하고 계속
+// 기다리는 걸 줄이려는 목적.
+export async function acknowledgeHelpRequest(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.helpRequest.update({
+    where: { id },
+    data: { acknowledgedAt: new Date() },
+  });
+
+  refresh();
+}
+
 export async function resolveHelpRequest(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;

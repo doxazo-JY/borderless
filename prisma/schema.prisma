@@ -146,4 +146,8 @@ model HelpRequest {
   requesterName  String? // 요청 시점 팀/조 선택 화면에서 입력한 참가자 이름 — 연락할 사람 특정용
   status         HelpRequestStatus @default(OPEN)
   createdAt      DateTime          @default(now())
+  // 임원이 "해결/통과 처리"까지 가기 전에 일단 "봤다"는 것만 참가자에게 먼저
+  // 알려주기 위한 필드 — 언제 확인했는지가 아니라 확인 여부 자체가 필요해서
+  // null이면 미확인, 값이 있으면 확인됨으로 취급한다.
+  acknowledgedAt DateTime?
 }
