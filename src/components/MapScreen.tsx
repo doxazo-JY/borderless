@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { NaverMap } from "@/components/NaverMap";
+import { HelpButton } from "@/components/HelpButton";
 import { LocationPanel, type SubmitResult } from "@/components/LocationPanel";
 import { PensionPanel } from "@/components/PensionPanel";
 import { ConversationTopicPanel } from "@/components/ConversationTopicPanel";
@@ -17,6 +18,9 @@ export type MapLocationInfo = {
   name: string;
   regionId: string;
   regionName: string;
+  // 실제 4지역 방문 순서와 무관하게 항상 열려있어야 하는 데모용 예시 포인트인지.
+  // true면 targetRegionId 비교(방문 순서 강제)를 건너뛴다.
+  regionIsExample: boolean;
   lat: number;
   lng: number;
   referencePhotoUrl: string | null;
@@ -295,6 +299,7 @@ export function MapScreen({
                 // 채워진 지역의 남은 포인트)는 흐리게 표시해서 눈에 덜 띄게 한다.
                 const isRelevant =
                   passed ||
+                  loc.regionIsExample ||
                   (!loc.regionCompletedElsewhere &&
                     loc.regionId === targetRegionId);
                 return {
@@ -383,7 +388,10 @@ export function MapScreen({
               // 때마다 완전히 새로 마운트되게 강제한다.
               key={selectedLocation.id}
               location={selectedLocation}
-              isCurrentRegion={selectedLocation.regionId === targetRegionId}
+              isCurrentRegion={
+                selectedLocation.regionIsExample ||
+                selectedLocation.regionId === targetRegionId
+              }
               targetRegionName={targetRegionName}
               targetRegionAwaitingCompletion={targetRegionAwaitingCompletion}
               onClose={() => setSelectedId(null)}
@@ -417,6 +425,7 @@ export function MapScreen({
         </div>
       </div>
       </div>
+      <HelpButton />
     </main>
   );
 }

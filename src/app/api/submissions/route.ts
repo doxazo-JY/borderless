@@ -33,9 +33,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ result: "not_found" }, { status: 404 });
   }
 
-  // 1. 지역 방문 순서 강제 (지도 UI는 안 막지만 제출은 여기서 막음)
+  // 1. 지역 방문 순서 강제 (지도 UI는 안 막지만 제출은 여기서 막음) — 데모용
+  // 예시 지역(Region.isExample)은 GroupRegionOrder에 아예 없어서 항상 예외.
   const targetRegionId = await getCurrentTargetRegionId(group.id);
-  if (location.regionId !== targetRegionId) {
+  if (!location.region.isExample && location.regionId !== targetRegionId) {
     const targetRegion = targetRegionId
       ? await prisma.region.findUnique({ where: { id: targetRegionId } })
       : null;

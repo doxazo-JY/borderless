@@ -154,6 +154,7 @@ export default async function MapPage() {
       name: loc.name,
       regionId: loc.regionId,
       regionName: loc.region.name,
+      regionIsExample: loc.region.isExample,
       lat: loc.lat,
       lng: loc.lng,
       referencePhotoUrl: loc.referencePhotoUrl,

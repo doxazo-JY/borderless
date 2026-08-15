@@ -225,6 +225,16 @@ export default async function AdminSetupPage() {
                   <p className="text-xs text-zinc-500">
                     {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
                   </p>
+                  <a
+                    href={`https://map.kakao.com/link/to/${encodeURIComponent(
+                      `${loc.region.name}지역 · ${loc.name}`,
+                    )},${loc.lat},${loc.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-medium text-blue-600 underline"
+                  >
+                    길찾기
+                  </a>
                   <p className="text-xs text-zinc-500">
                     캡 {loc.claimedCount}/{loc.capacity}
                   </p>
