@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FAILURE_TIPS } from "@/lib/failure-tips";
 
 type TrackedRequest = {
   id: string;
@@ -13,6 +14,7 @@ export function HelpButton() {
     "idle" | "composing" | "sending" | "sent" | "error"
   >("idle");
   const [message, setMessage] = useState("");
+  const [showTips, setShowTips] = useState(false);
   // 요청을 보낸 뒤에도 "확인함/해결됨" 상태를 계속 보여주기 위해 위 state와는
   // 별도로 들고 있는다 — state는 작성 폼 자체의 UI 상태고, 이건 이미 보낸
   // 요청의 서버 쪽 진행 상황이라 서로 독립적으로 움직여야 한다.
@@ -78,7 +80,9 @@ export function HelpButton() {
             rows={2}
             autoFocus
             disabled={state === "sending"}
-            className="w-full resize-none rounded border border-line p-1.5 text-xs text-ink"
+            // 16px(text-base) 미만이면 아이폰 사파리가 포커스할 때 화면을
+            // 자동으로 확대해버린다 — text-xs(12px)였던 게 그 원인이었다.
+            className="w-full resize-none rounded border border-line p-1.5 text-base text-ink"
           />
           {state === "error" && (
             <p className="mt-1 text-[10px] font-medium text-red-600">
@@ -109,14 +113,51 @@ export function HelpButton() {
         </div>
       )}
 
-      {state !== "composing" && state !== "sending" && state !== "error" && (
-        <button
-          onClick={() => setState("composing")}
+      {showTips && (
+        <div
           style={{ top: "var(--help-button-top, 12px)" }}
-          className="label-tech fixed left-1/2 z-[60] -translate-x-1/2 rounded-full border-2 border-ink bg-red-600 px-2.5 py-1.5 text-[9px] font-bold whitespace-nowrap text-white shadow-[0_6px_18px_-4px_rgba(220,38,38,0.55)] lg:left-[30%]"
+          className="fixed left-1/2 z-[60] w-[min(90vw,320px)] -translate-x-1/2 lg:left-[30%] rounded-xl border-2 border-ink bg-paper-panel p-3 shadow-[0_10px_30px_-8px_rgba(20,18,12,0.4)]"
         >
-          {state === "sent" ? "요청 완료!" : "도움 요청"}
-        </button>
+          <div className="mb-1 flex items-center justify-between">
+            <p className="label-tech text-[10px] text-accent">자주 막히는 이유</p>
+            <button
+              type="button"
+              onClick={() => setShowTips(false)}
+              className="text-[10px] text-muted underline underline-offset-2"
+            >
+              닫기
+            </button>
+          </div>
+          <ul className="list-disc space-y-1 pl-4 text-xs text-ink">
+            {FAILURE_TIPS.map((tip) => (
+              <li key={tip}>{tip}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {state !== "composing" && state !== "sending" && state !== "error" && (
+        <div
+          style={{ top: "var(--help-button-top, 12px)" }}
+          className="fixed left-1/2 z-[60] flex -translate-x-1/2 items-center gap-1.5 lg:left-[30%]"
+        >
+          <button
+            onClick={() => {
+              setShowTips(false);
+              setState("composing");
+            }}
+            className="label-tech rounded-full border-2 border-ink bg-red-600 px-2.5 py-1.5 text-[9px] font-bold whitespace-nowrap text-white shadow-[0_6px_18px_-4px_rgba(220,38,38,0.55)]"
+          >
+            {state === "sent" ? "요청 완료!" : "도움 요청"}
+          </button>
+          <button
+            onClick={() => setShowTips((v) => !v)}
+            aria-label="자주 막히는 이유"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-paper-panel text-xs font-bold text-ink shadow-[0_2px_8px_rgba(20,18,12,0.25)]"
+          >
+            ?
+          </button>
+        </div>
       )}
 
       {tracked && <TrackedRequestBanner tracked={tracked} onDismiss={() => setTracked(null)} />}

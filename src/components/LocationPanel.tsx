@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { MapLocationInfo, PanelStep } from "@/components/MapScreen";
 import { ParchmentStains } from "@/components/ParchmentStains";
+import { FAILURE_TIPS } from "@/lib/failure-tips";
 import { supabaseBrowser } from "@/lib/supabase-client";
 
 const MISSION_LABEL: Record<string, string> = {
@@ -469,9 +470,9 @@ export function LocationPanel({
                   자주 막히는 이유
                 </summary>
                 <ul className="mt-1.5 list-disc space-y-1 pl-4">
-                  <li>기준 사진과 비슷한 각도·거리로 찍었는지</li>
-                  <li>기준 사진에 보이는 배경(건물, 간판, 사물 등)이 그대로 나왔는지</li>
-                  <li>너무 어둡거나 흔들려서 잘 안 보이는 사진은 아닌지</li>
+                  {FAILURE_TIPS.map((tip) => (
+                    <li key={tip}>{tip}</li>
+                  ))}
                 </ul>
               </details>
             </div>
