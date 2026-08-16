@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { uploadPhoto } from "@/lib/storage";
+import { publicPhotoUrl } from "@/lib/storage";
 
 const SETUP_PATH = `/admin/${process.env.ADMIN_SECRET_PATH}/setup`;
 
@@ -20,16 +20,16 @@ export async function createLocation(formData: FormData) {
   const mission1Id = String(formData.get("mission1Id") ?? "") || null;
   const mission2Id = String(formData.get("mission2Id") ?? "") || null;
   const ingredientIds = formData.getAll("ingredientIds").map(String);
-  const photo = formData.get("referencePhoto");
+  // 사진 바이트는 브라우저가 이미 Storage에 직접 올려뒀고, 여기엔 그 경로만 온다.
+  const referencePhotoPath = String(formData.get("referencePhotoPath") ?? "").trim();
 
   if (!name || !regionId || Number.isNaN(lat) || Number.isNaN(lng)) {
     throw new Error("이름, 지역, 좌표는 필수입니다.");
   }
 
-  let referencePhotoUrl: string | undefined;
-  if (photo instanceof File && photo.size > 0) {
-    referencePhotoUrl = await uploadPhoto(photo, "reference");
-  }
+  const referencePhotoUrl = referencePhotoPath
+    ? publicPhotoUrl(referencePhotoPath)
+    : undefined;
 
   await prisma.location.create({
     data: {
@@ -49,12 +49,10 @@ export async function createLocation(formData: FormData) {
   refresh();
 }
 
-export async function updateLocationPhoto(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  const photo = formData.get("referencePhoto");
-  if (!id || !(photo instanceof File) || photo.size === 0) return;
+export async function updateLocationPhoto(id: string, photoPath: string) {
+  if (!id || !photoPath) return;
 
-  const referencePhotoUrl = await uploadPhoto(photo, "reference");
+  const referencePhotoUrl = publicPhotoUrl(photoPath);
   await prisma.location.update({ where: { id }, data: { referencePhotoUrl } });
 
   refresh();
@@ -118,11 +116,8 @@ export async function createMission(formData: FormData) {
     throw new Error("잘못된 미션 유형입니다.");
   }
 
-  let imageUrl: string | null = null;
-  const photo = formData.get("photo");
-  if (photo instanceof File && photo.size > 0) {
-    imageUrl = await uploadPhoto(photo, "mission");
-  }
+  const photoPath = String(formData.get("photoPath") ?? "").trim();
+  const imageUrl = photoPath ? publicPhotoUrl(photoPath) : null;
 
   await prisma.mission.create({
     data: {
@@ -134,12 +129,10 @@ export async function createMission(formData: FormData) {
   refresh();
 }
 
-export async function updateMissionPhoto(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  const photo = formData.get("photo");
-  if (!id || !(photo instanceof File) || photo.size === 0) return;
+export async function updateMissionPhoto(id: string, photoPath: string) {
+  if (!id || !photoPath) return;
 
-  const imageUrl = await uploadPhoto(photo, "mission");
+  const imageUrl = publicPhotoUrl(photoPath);
   await prisma.mission.update({ where: { id }, data: { imageUrl } });
 
   refresh();

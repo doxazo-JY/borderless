@@ -6,6 +6,7 @@ import {
   LocationMapPicker,
   type ExistingMapLocation,
 } from "@/components/admin/LocationMapPicker";
+import { supabaseBrowser } from "@/lib/supabase-client";
 
 type Option = { id: string; label: string };
 
@@ -31,6 +32,8 @@ export function LocationForm({
     "idle" | "loading" | "error"
   >("idle");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   async function createAndReset(formData: FormData) {
     await createLocation(formData);
@@ -41,6 +44,38 @@ export function LocationForm({
     setGpsStatus("idle");
     setAddressStatus("idle");
     setPhotoPreview(null);
+    setPhotoPath(null);
+  }
+
+  // 사진 바이트는 Server Action(요청 본문 4.5MB 제한이 있는 Vercel 서버리스
+  // 함수를 거침)이 아니라 브라우저 → Supabase Storage로 직접 올리고, 폼에는
+  // 그 결과 경로만 hidden input으로 실어 보낸다 — 폰카메라 사진은 그 제한을
+  // 쉽게 넘어서 등록 자체가 조용히 실패하는 원인이었다.
+  async function handlePhotoChange(file: File) {
+    setPhotoPreview(URL.createObjectURL(file));
+    setPhotoPath(null);
+    setPhotoUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const urlRes = await fetch("/api/admin/photo-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ext, prefix: "reference" }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlData.ok) throw new Error(urlData.message || "업로드 URL 발급 실패");
+
+      const { error: uploadError } = await supabaseBrowser.storage
+        .from(urlData.bucket)
+        .uploadToSignedUrl(urlData.path, urlData.token, file);
+      if (uploadError) throw uploadError;
+
+      setPhotoPath(urlData.path);
+    } catch {
+      setPhotoPath(null);
+    } finally {
+      setPhotoUploading(false);
+    }
   }
 
   // 좌표가 바뀔 때마다(지도 클릭/GPS/직접 입력) 주소 입력창 자체에 현재 주소를
@@ -218,15 +253,18 @@ export function LocationForm({
         기준 사진
         <input
           type="file"
-          name="referencePhoto"
           accept="image/*"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            setPhotoPreview(f ? URL.createObjectURL(f) : null);
+            if (f) handlePhotoChange(f);
           }}
           className="mt-1 w-full text-sm"
         />
       </label>
+      <input type="hidden" name="referencePhotoPath" value={photoPath ?? ""} />
+      {photoUploading && (
+        <p className="text-xs text-zinc-500">사진 업로드 중...</p>
+      )}
       {photoPreview && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -292,9 +330,10 @@ export function LocationForm({
 
       <button
         type="submit"
-        className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+        disabled={photoUploading}
+        className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
-        포인트 추가
+        {photoUploading ? "사진 업로드 중..." : "포인트 추가"}
       </button>
     </form>
   );

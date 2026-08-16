@@ -4,11 +4,11 @@ import { LocationPhotoUpload } from "@/components/admin/LocationPhotoUpload";
 import { LocationDetailsEditor } from "@/components/admin/LocationDetailsEditor";
 import { MissionEditor } from "@/components/admin/MissionEditor";
 import { MissionPhotoUpload } from "@/components/admin/MissionPhotoUpload";
+import { MissionCreateForm } from "@/components/admin/MissionCreateForm";
 import { IngredientEditor } from "@/components/admin/IngredientEditor";
 import { ConfirmDeleteButton } from "@/components/admin/ConfirmDeleteButton";
 import {
   createIngredient,
-  createMission,
   deleteIngredient,
   deleteLocation,
   deleteMission,
@@ -127,33 +127,7 @@ export default async function AdminSetupPage() {
             </li>
           ))}
         </ul>
-        <form
-          action={createMission}
-          className="flex gap-2 rounded border border-zinc-200 p-3"
-        >
-          <select name="type" className="rounded border border-zinc-300 p-2 text-sm">
-            <option value="WORD">말씀</option>
-            <option value="PRAISE">찬양</option>
-            <option value="PRAYER">기도</option>
-            <option value="CONFESSION">고백</option>
-          </select>
-          <textarea
-            name="content"
-            placeholder="본문/기도 주제/고백 지시문 (찬양은 비워둬도 됨). Enter로 줄바꿈 가능"
-            rows={2}
-            className="h-16 flex-1 resize-y rounded border border-zinc-300 p-2 text-sm"
-          />
-          <input
-            type="file"
-            name="photo"
-            accept="image/*"
-            title="문제 사진(선택)"
-            className="w-32 text-xs"
-          />
-          <button className="rounded bg-zinc-900 px-3 py-2 text-sm text-white">
-            추가
-          </button>
-        </form>
+        <MissionCreateForm />
       </section>
 
       {/* 재료 */}
