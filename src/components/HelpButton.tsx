@@ -7,6 +7,7 @@ type TrackedRequest = {
   id: string;
   status: "OPEN" | "RESOLVED";
   acknowledged: boolean;
+  adminMessage: string | null;
 };
 
 export function HelpButton() {
@@ -31,7 +32,12 @@ export function HelpButton() {
         const data = await res.json();
         setTracked((prev) =>
           prev && prev.id === tracked.id
-            ? { ...prev, status: data.status, acknowledged: data.acknowledged }
+            ? {
+                ...prev,
+                status: data.status,
+                acknowledged: data.acknowledged,
+                adminMessage: data.adminMessage,
+              }
             : prev,
         );
       } catch {
@@ -58,7 +64,7 @@ export function HelpButton() {
       const data = await res.json();
       setState("sent");
       setMessage("");
-      setTracked({ id: data.id, status: "OPEN", acknowledged: false });
+      setTracked({ id: data.id, status: "OPEN", acknowledged: false, adminMessage: null });
       setTimeout(() => setState("idle"), 3000);
     } catch {
       setState("error");
@@ -189,19 +195,30 @@ function TrackedRequestBanner({
         : "border-line bg-white text-muted";
 
   return (
-    <div
-      style={{ top: "calc(var(--help-button-top, 12px) + 34px)" }}
-      className={`label-tech fixed left-1/2 z-[59] flex -translate-x-1/2 items-center gap-2 rounded-full border-2 px-3 py-1.5 text-[9px] font-bold whitespace-nowrap shadow-[0_6px_14px_-6px_rgba(20,18,12,0.4)] lg:left-[30%] ${tone}`}
-    >
-      {tracked.status !== "RESOLVED" && (
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${tracked.acknowledged ? "bg-accent" : "bg-muted"} animate-pulse`}
-        />
+    <>
+      <div
+        style={{ top: "calc(var(--help-button-top, 12px) + 34px)" }}
+        className={`label-tech fixed left-1/2 z-[59] flex -translate-x-1/2 items-center gap-2 rounded-full border-2 px-3 py-1.5 text-[9px] font-bold whitespace-nowrap shadow-[0_6px_14px_-6px_rgba(20,18,12,0.4)] lg:left-[30%] ${tone}`}
+      >
+        {tracked.status !== "RESOLVED" && (
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${tracked.acknowledged ? "bg-accent" : "bg-muted"} animate-pulse`}
+          />
+        )}
+        {label}
+        <button type="button" onClick={onDismiss} className="ml-1 text-muted">
+          ✕
+        </button>
+      </div>
+      {tracked.adminMessage && (
+        <div
+          style={{ top: "calc(var(--help-button-top, 12px) + 66px)" }}
+          className="fixed left-1/2 z-[59] w-[min(90vw,320px)] -translate-x-1/2 rounded-xl border-2 border-accent bg-paper-panel p-3 shadow-[0_10px_30px_-8px_rgba(20,18,12,0.4)] lg:left-[30%]"
+        >
+          <p className="label-tech mb-1 text-[10px] text-accent">임원 답장</p>
+          <p className="text-sm text-ink">{tracked.adminMessage}</p>
+        </div>
       )}
-      {label}
-      <button type="button" onClick={onDismiss} className="ml-1 text-muted">
-        ✕
-      </button>
-    </div>
+    </>
   );
 }

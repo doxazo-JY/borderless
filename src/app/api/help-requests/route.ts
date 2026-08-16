@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
   const helpRequest = await prisma.helpRequest.findUnique({
     where: { id },
-    select: { groupId: true, status: true, acknowledgedAt: true },
+    select: { groupId: true, status: true, acknowledgedAt: true, adminMessage: true },
   });
   if (!helpRequest || helpRequest.groupId !== group.id) {
     return NextResponse.json({ ok: false }, { status: 404 });
@@ -71,5 +71,6 @@ export async function GET(request: Request) {
     ok: true,
     status: helpRequest.status,
     acknowledged: !!helpRequest.acknowledgedAt,
+    adminMessage: helpRequest.adminMessage,
   });
 }

@@ -122,6 +122,22 @@ export async function acknowledgeHelpRequest(formData: FormData) {
   refresh();
 }
 
+// "확인함"과 별개로, 참가자에게 짧은 답장을 남긴다("사진 다시 확인 중이에요"
+// 등) — 아직 상태 처리 전 대기 시간이 길어질 때, 뭘 기다리는지 몰라 계속
+// 불안해하는 걸 줄이려는 목적. 메시지를 보내면 확인도 같이 된 걸로 친다.
+export async function replyHelpRequest(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const message = String(formData.get("message") ?? "").trim();
+  if (!id || !message) return;
+
+  await prisma.helpRequest.update({
+    where: { id },
+    data: { adminMessage: message, acknowledgedAt: new Date() },
+  });
+
+  refresh();
+}
+
 export async function resolveHelpRequest(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;

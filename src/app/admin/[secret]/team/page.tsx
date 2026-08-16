@@ -13,6 +13,7 @@ import {
   manualPassSubmission,
   manualRejectSubmission,
   passHelpRequest,
+  replyHelpRequest,
   resetAllSubmissions,
   resetSubmission,
   resolveHelpRequest,
@@ -279,6 +280,12 @@ export default async function TeamPage() {
                     {hr.message}
                   </p>
                 )}
+                {hr.adminMessage && (
+                  <p className="mt-2 rounded border border-emerald-100 bg-emerald-50 p-3 text-sm leading-snug text-emerald-800">
+                    <span className="font-semibold">내가 보낸 답장: </span>
+                    {hr.adminMessage}
+                  </p>
+                )}
               </div>
 
               {hr.location && (
@@ -340,6 +347,22 @@ export default async function TeamPage() {
                   </button>
                 </form>
               </div>
+
+              <form
+                action={replyHelpRequest}
+                className="flex items-center gap-1 border-t border-red-100 pt-2"
+              >
+                <input type="hidden" name="id" value={hr.id} />
+                <input
+                  name="message"
+                  required
+                  placeholder="답장 보내기 (조에게 그대로 보여요, 확인 처리도 같이 됨)"
+                  className="min-w-0 flex-1 rounded border border-zinc-300 p-1 text-xs"
+                />
+                <button className="shrink-0 rounded border border-emerald-300 bg-white px-2 py-1 text-xs font-medium text-emerald-700">
+                  보내기
+                </button>
+              </form>
 
               {hr.location && (
                 <form
