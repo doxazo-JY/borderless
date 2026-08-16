@@ -144,13 +144,14 @@ function applyPinStatus(
         ? "0.75"
         : "1";
   // 선택된 마커는 겹친 것들 사이에서도 뭘 골랐는지 바로 보이도록 살짝 확대한다.
-  pinEl.style.width = isSelected ? "30px" : "24px";
-  pinEl.style.height = isSelected ? "30px" : "24px";
-  pinEl.style.fontSize = isSelected ? "11px" : "10px";
+  pinEl.style.width = isSelected ? "34px" : "28px";
+  pinEl.style.height = isSelected ? "34px" : "28px";
+  pinEl.style.fontSize = isSelected ? "10px" : "9px";
   pinEl.style.boxShadow = "0 1px 4px rgba(0,0,0,0.5)";
-  // 지역 구분이 안 돼 있으면 마커만 봐선 어느 지역인지 알 수 없었다 — 지역 알파벳을
-  // 항상 표시하고, 상태 기호는 그 뒤에 붙여서 같이 보여준다.
-  const regionLetter = loc.regionName.toUpperCase();
+  // 지역 알파벳만으론 같은 지역 안 4개 포인트를 서로 구분할 수 없었다 — 포인트
+  // 이름 자체가 "A1"처럼 지역+번호로 지어져 있으니 그대로 쓴다(길게 지은
+  // 이름이어도 마커 안에서 안 깨지도록 4자로 잘라둔다). 상태 기호는 그 뒤에 붙인다.
+  const label = loc.name.toUpperCase().slice(0, 4);
   const statusSymbol = loc.isMissionDone
     ? "✓"
     : loc.isPassed
@@ -158,7 +159,7 @@ function applyPinStatus(
       : loc.isClosed
         ? "✕"
         : "";
-  pinEl.textContent = `${regionLetter}${statusSymbol}`;
+  pinEl.textContent = `${label}${statusSymbol}`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -370,8 +371,8 @@ export function NaverMap({
 
         const pinEl = document.createElement("div");
         Object.assign(pinEl.style, {
-          width: "24px",
-          height: "24px",
+          width: "28px",
+          height: "28px",
           borderRadius: "50%",
           border: "2px solid white",
           boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
@@ -379,7 +380,7 @@ export function NaverMap({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: "10px",
+          fontSize: "9px",
           fontWeight: "bold",
           color: "white",
         });
