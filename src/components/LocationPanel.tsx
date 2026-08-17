@@ -232,54 +232,69 @@ export function LocationPanel({
     onResult(null);
   }
 
+  async function attemptVideoUpload(file: File, submissionId: string) {
+    const ext = file.name.split(".").pop() || "mp4";
+
+    // 1. 서명된 업로드 URL 발급 (우리 서버는 영상 바이트를 거치지 않음)
+    const urlRes = await fetch(`/api/submissions/${submissionId}/video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ext }),
+    });
+    const urlData = await urlRes.json();
+    if (!urlData.ok) throw new Error(urlData.message || "업로드 URL 발급 실패");
+
+    // 2. 브라우저 → Supabase Storage 직접 업로드
+    const { error: uploadError } = await supabaseBrowser.storage
+      .from(urlData.bucket)
+      .uploadToSignedUrl(urlData.path, urlData.token, file);
+    if (uploadError) throw uploadError;
+
+    // 3. 업로드 완료를 서버에 알려 Submission.videoUrl 갱신
+    const completeRes = await fetch(
+      `/api/submissions/${submissionId}/video-complete`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: urlData.path }),
+      },
+    );
+    const completeData = await completeRes.json();
+    if (!completeData.ok) throw new Error("업로드가 완료되지 않았어요");
+    return completeData.videoUrl as string;
+  }
+
+  // 숙소 와이파이가 불안정해서 "Load failed" 같은 일시적 네트워크 에러가 잦았다 —
+  // 큰 영상 업로드 도중 연결이 끊기면 매번 사람이 직접 다시 눌러야 했는데, 이런
+  // 종류의 실패는 재시도하면 되는 경우가 많아서 몇 번은 자동으로 다시 시도한다.
+  const MAX_VIDEO_UPLOAD_ATTEMPTS = 3;
+
   async function handleVideoUpload(): Promise<boolean> {
     if (!videoFile || !result?.submissionId) return false;
     setVideoUploading(true);
     setVideoError(null);
     try {
-      const ext = videoFile.name.split(".").pop() || "mp4";
-
-      // 1. 서명된 업로드 URL 발급 (우리 서버는 영상 바이트를 거치지 않음)
-      const urlRes = await fetch(
-        `/api/submissions/${result.submissionId}/video`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ext }),
-        },
-      );
-      const urlData = await urlRes.json();
-      if (!urlData.ok) throw new Error(urlData.message || "업로드 URL 발급 실패");
-
-      // 2. 브라우저 → Supabase Storage 직접 업로드
-      const { error: uploadError } = await supabaseBrowser.storage
-        .from(urlData.bucket)
-        .uploadToSignedUrl(urlData.path, urlData.token, videoFile);
-      if (uploadError) throw uploadError;
-
-      // 3. 업로드 완료를 서버에 알려 Submission.videoUrl 갱신
-      const completeRes = await fetch(
-        `/api/submissions/${result.submissionId}/video-complete`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: urlData.path }),
-        },
-      );
-      const completeData = await completeRes.json();
-      if (completeData.ok) {
-        onResult({ ...result, videoUrl: completeData.videoUrl });
-        // 영상 업로드가 끝나야 지역이 "완료"로 잡혀 다음 목적지로 넘어가므로,
-        // 서버에서 계산되는 진행 상태를 다시 불러온다.
-        router.refresh();
-        return true;
+      let lastError: unknown = null;
+      for (let attempt = 1; attempt <= MAX_VIDEO_UPLOAD_ATTEMPTS; attempt++) {
+        try {
+          if (attempt > 1) {
+            setVideoError(`업로드 재시도 중... (${attempt}/${MAX_VIDEO_UPLOAD_ATTEMPTS})`);
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+          const videoUrl = await attemptVideoUpload(videoFile, result.submissionId);
+          setVideoError(null);
+          onResult({ ...result, videoUrl });
+          // 영상 업로드가 끝나야 지역이 "완료"로 잡혀 다음 목적지로 넘어가므로,
+          // 서버에서 계산되는 진행 상태를 다시 불러온다.
+          router.refresh();
+          return true;
+        } catch (e) {
+          lastError = e;
+          console.error(`영상 업로드 실패 (시도 ${attempt}):`, e);
+        }
       }
-      setVideoError("업로드가 완료되지 않았어요. 다시 시도해주세요.");
-      return false;
-    } catch (e) {
-      console.error("영상 업로드 실패:", e);
-      const message = e instanceof Error ? e.message : String(e);
-      setVideoError(`업로드 실패: ${message}`);
+      const message = lastError instanceof Error ? lastError.message : String(lastError);
+      setVideoError(`업로드 실패: ${message} (${MAX_VIDEO_UPLOAD_ATTEMPTS}번 재시도함)`);
       return false;
     } finally {
       setVideoUploading(false);
