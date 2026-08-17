@@ -164,6 +164,10 @@ export function LocationPanel({
   const [submitting, setSubmitting] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploading, setVideoUploading] = useState(false);
+  // 업로드 실패해도 그동안 화면엔 아무 메시지 없이 버튼만 조용히 원래대로
+  // 돌아가서 "로딩되다가 초기화된다"는 것 말고는 참가자가 아무것도 모르는
+  // 상태였다 — 실제 원인을 알아야 대응할 수 있어서 화면에 그대로 보여준다.
+  const [videoError, setVideoError] = useState<string | null>(null);
   // 이미 올린 영상이 있어도(현장에서 업로드 오류로 짧은 영상 등을 올린 경우)
   // 다시 찍어서 바꿀 수 있게 — 평소엔 안 보이다가 눌렀을 때만 재업로드 UI가 뜬다.
   const [showReupload, setShowReupload] = useState(false);
@@ -231,6 +235,7 @@ export function LocationPanel({
   async function handleVideoUpload(): Promise<boolean> {
     if (!videoFile || !result?.submissionId) return false;
     setVideoUploading(true);
+    setVideoError(null);
     try {
       const ext = videoFile.name.split(".").pop() || "mp4";
 
@@ -269,9 +274,12 @@ export function LocationPanel({
         router.refresh();
         return true;
       }
+      setVideoError("업로드가 완료되지 않았어요. 다시 시도해주세요.");
       return false;
     } catch (e) {
       console.error("영상 업로드 실패:", e);
+      const message = e instanceof Error ? e.message : String(e);
+      setVideoError(`업로드 실패: ${message}`);
       return false;
     } finally {
       setVideoUploading(false);
@@ -446,6 +454,9 @@ export function LocationPanel({
                         : "영상 업로드"}
                   </button>
                 </div>
+              )}
+              {videoError && (
+                <p className="text-xs font-medium text-red-600">{videoError}</p>
               )}
             </div>
           )}
