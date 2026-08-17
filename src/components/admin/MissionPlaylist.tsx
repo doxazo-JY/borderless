@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DownloadLink } from "@/components/admin/DownloadLink";
+import { replaceSubmissionVideo } from "@/app/admin/[secret]/gallery/actions";
+import { supabaseBrowser } from "@/lib/supabase-client";
 
 export interface PlaylistItem {
   id: string;
@@ -17,6 +19,7 @@ export interface PlaylistItem {
 // 않도록 대표 카드 하나만 눌러서 모달에서 자동으로 이어보게 한다.
 export function MissionPlaylist({ title, items }: { title: string; items: PlaylistItem[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [replacing, setReplacing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const first = items[0];
 
@@ -41,6 +44,34 @@ export function MissionPlaylist({ title, items }: { title: string; items: Playli
 
   function handleEnded() {
     setOpenIndex((i) => (i === null ? i : Math.min(i + 1, items.length - 1)));
+  }
+
+  async function handleReplaceVideo(file: File) {
+    if (!current) return;
+    setReplacing(true);
+    try {
+      const ext = file.name.split(".").pop() || "mp4";
+      const urlRes = await fetch("/api/admin/photo-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ext, prefix: "video" }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlData.ok) throw new Error(urlData.message || "업로드 URL 발급 실패");
+
+      const { error: uploadError } = await supabaseBrowser.storage
+        .from(urlData.bucket)
+        .uploadToSignedUrl(urlData.path, urlData.token, file);
+      if (uploadError) throw uploadError;
+
+      await replaceSubmissionVideo(current.id, urlData.path);
+      // 최신 videoUrl은 서버에서 조합되므로, 전체 새로고침으로 받아온다.
+      window.location.reload();
+    } catch (e) {
+      console.error("영상 교체 실패:", e);
+      alert("영상 교체에 실패했어요. 다시 시도해주세요.");
+      setReplacing(false);
+    }
   }
 
   return (
@@ -116,6 +147,20 @@ export function MissionPlaylist({ title, items }: { title: string; items: Playli
                 {openIndex! + 1} / {items.length}
               </span>
               <DownloadLink url={current.videoUrl} filename={current.downloadName} label="이 영상 받기" />
+              <label className="cursor-pointer text-xs text-emerald-400 underline">
+                {replacing ? "교체 중..." : "영상 교체"}
+                <input
+                  type="file"
+                  accept="video/*"
+                  disabled={replacing}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) handleReplaceVideo(file);
+                  }}
+                />
+              </label>
               <button type="button" onClick={() => setOpenIndex(null)} className="ml-2 underline">
                 닫기
               </button>
