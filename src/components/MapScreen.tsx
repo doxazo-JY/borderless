@@ -81,6 +81,7 @@ export function MapScreen({
   targetRegionName,
   groupSelectionLocked,
   aiJudgingDisabled,
+  announcementText,
   earnedIngredients,
   teammatesRegionProgress,
 }: {
@@ -91,6 +92,7 @@ export function MapScreen({
   targetRegionName: string | null;
   groupSelectionLocked: boolean;
   aiJudgingDisabled: boolean;
+  announcementText: string | null;
   earnedIngredients: { id: string; name: string }[];
   teammatesRegionProgress: {
     groupId: string;
@@ -155,7 +157,7 @@ export function MapScreen({
   // 4지역 모두 미션 완료(영상 업로드까지)면 상단에 숙소 복귀 안내를 계속 띄운다.
   const allRegionsDone =
     regionProgress.length > 0 && regionProgress.every((p) => p.status === "done");
-  const showTopBanner = aiJudgingDisabled || allRegionsDone;
+  const showTopBanner = aiJudgingDisabled || allRegionsDone || !!announcementText;
 
   // 전역 "도움 요청" 버튼(HelpButton)은 루트 레이아웃에 fixed로 떠 있어 헤더/배너의
   // 유무·높이를 모른다 — 두 요소 높이를 더하고 바깥 padding(p-5/p-2 등)을 따로
@@ -332,6 +334,11 @@ export function MapScreen({
                 ref={bannerRef}
                 className="absolute inset-x-0 top-0 z-20 shadow-[0_8px_16px_-10px_rgba(20,18,12,0.5)]"
               >
+                {announcementText && (
+                  <div className="label-tech border-b border-red-700 bg-red-600 px-4 py-2 text-center text-[11px] font-bold text-white">
+                    {announcementText}
+                  </div>
+                )}
                 {aiJudgingDisabled && (
                   <div className="label-tech border-b border-accent bg-accent px-4 py-2 text-center text-[11px] font-bold text-white">
                     현재 AI 평가가 불가능해 임원의 수동 평가가 진행될 예정입니다. 사진 제출

@@ -185,6 +185,7 @@ export default async function MapPage() {
       targetRegionName={targetRegionName}
       groupSelectionLocked={settings.groupSelectionLocked}
       aiJudgingDisabled={settings.aiJudgingDisabled}
+      announcementText={settings.announcementText}
       earnedIngredients={earnedIngredients}
       teammatesRegionProgress={teammatesRegionProgress}
     />

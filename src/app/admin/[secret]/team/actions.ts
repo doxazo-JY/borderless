@@ -19,6 +19,19 @@ export async function toggleGroupSelectionLock() {
   refresh();
 }
 
+// 전체 참가자 지도 화면에 한 번에 뜨는 공지 배너 — 개별 도움 요청 답장과 달리
+// 특정 조가 아니라 전원에게 즉시 보여야 하는 긴급 안내용(예: 영상 업로드 장애 시
+// 화질 낮춰 찍어달라는 공지). 빈 문자열로 보내면 배너가 사라진다.
+export async function setAnnouncement(formData: FormData) {
+  const text = String(formData.get("text") ?? "").trim();
+  const settings = await getAppSettings();
+  await prisma.appSettings.update({
+    where: { id: settings.id },
+    data: { announcementText: text || null },
+  });
+  refresh();
+}
+
 export async function toggleAiJudgingDisabled() {
   const settings = await getAppSettings();
   await prisma.appSettings.update({

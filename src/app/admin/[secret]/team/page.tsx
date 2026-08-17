@@ -14,6 +14,7 @@ import {
   manualRejectSubmission,
   passHelpRequest,
   replyHelpRequest,
+  setAnnouncement,
   resetAllSubmissions,
   resetSubmission,
   resolveHelpRequest,
@@ -210,6 +211,20 @@ export default async function TeamPage() {
           <GroupLockToggle locked={settings.groupSelectionLocked} />
           <AiJudgingToggle disabled={settings.aiJudgingDisabled} />
         </div>
+        <form action={setAnnouncement} className="mt-2 flex items-center gap-2">
+          <input
+            name="text"
+            defaultValue={settings.announcementText ?? ""}
+            placeholder="전체 공지 배너 (모든 참가자 지도 화면 상단에 뜸, 비우고 저장하면 사라짐)"
+            className="min-w-0 flex-1 rounded border border-zinc-300 p-2 text-sm"
+          />
+          <button
+            type="submit"
+            className="shrink-0 rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+          >
+            공지 저장
+          </button>
+        </form>
       </section>
 
       {/* 그룹별 진행 */}
@@ -260,10 +275,18 @@ export default async function TeamPage() {
               className="flex flex-col gap-3 rounded border border-red-200 bg-red-50 p-4"
             >
               <div className="text-sm">
-                <p className="font-semibold">
-                  {hr.group.displayName}
-                  {hr.requesterName ? ` · ${hr.requesterName}` : ""}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold">
+                    {hr.group.displayName}
+                    {hr.requesterName ? ` · ${hr.requesterName}` : ""}
+                  </p>
+                  <form action={resolveHelpRequest}>
+                    <input type="hidden" name="id" value={hr.id} />
+                    <button className="shrink-0 text-[10px] text-zinc-400 underline">
+                      해결됨 (통과 안 시킴)
+                    </button>
+                  </form>
+                </div>
                 <p className="text-xs text-zinc-500">
                   {hr.location
                     ? `${hr.location.region.name}지역 · ${hr.location.name}`
@@ -321,32 +344,14 @@ export default async function TeamPage() {
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center gap-2">
-                {!hr.acknowledgedAt && (
-                  <form action={acknowledgeHelpRequest}>
-                    <input type="hidden" name="id" value={hr.id} />
-                    <button className="rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700">
-                      확인함 (참가자에게 알림)
-                    </button>
-                  </form>
-                )}
-                {hr.location && (
-                  <form action={passHelpRequest}>
-                    <input type="hidden" name="helpRequestId" value={hr.id} />
-                    <ConfirmDeleteButton
-                      label="통과 처리"
-                      className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white"
-                      confirmText={`${hr.group.displayName}를 "${hr.location.name}"에서 통과 처리할까요? 캡 차감/미션 공개까지 실제 통과와 동일하게 처리됩니다.`}
-                    />
-                  </form>
-                )}
-                <form action={resolveHelpRequest}>
+              {!hr.acknowledgedAt && (
+                <form action={acknowledgeHelpRequest}>
                   <input type="hidden" name="id" value={hr.id} />
-                  <button className="rounded bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white">
-                    해결됨 (통과 안 시킴)
+                  <button className="rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700">
+                    확인함 (참가자에게 알림)
                   </button>
                 </form>
-              </div>
+              )}
 
               <form
                 action={replyHelpRequest}
@@ -365,21 +370,31 @@ export default async function TeamPage() {
               </form>
 
               {hr.location && (
-                <form
-                  action={failHelpRequest}
-                  className="flex items-center gap-1 border-t border-red-100 pt-2"
-                >
-                  <input type="hidden" name="helpRequestId" value={hr.id} />
-                  <input
-                    name="reason"
-                    required
-                    placeholder="반려 사유 (조에게 그대로 보여요)"
-                    className="min-w-0 flex-1 rounded border border-zinc-300 p-1 text-xs"
-                  />
-                  <button className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-600">
-                    반려
-                  </button>
-                </form>
+                <div className="flex items-center gap-1 border-t border-red-100 pt-2">
+                  <form action={passHelpRequest} className="shrink-0">
+                    <input type="hidden" name="helpRequestId" value={hr.id} />
+                    <ConfirmDeleteButton
+                      label="통과 처리"
+                      className="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white"
+                      confirmText={`${hr.group.displayName}를 "${hr.location.name}"에서 통과 처리할까요? 캡 차감/미션 공개까지 실제 통과와 동일하게 처리됩니다.`}
+                    />
+                  </form>
+                  <form
+                    action={failHelpRequest}
+                    className="flex min-w-0 flex-1 items-center gap-1"
+                  >
+                    <input type="hidden" name="helpRequestId" value={hr.id} />
+                    <input
+                      name="reason"
+                      required
+                      placeholder="반려 사유 (조에게 그대로 보여요)"
+                      className="min-w-0 flex-1 rounded border border-zinc-300 p-1 text-xs"
+                    />
+                    <button className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-600">
+                      반려
+                    </button>
+                  </form>
+                </div>
               )}
             </li>
             );

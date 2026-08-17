@@ -39,6 +39,10 @@ model AppSettings {
   // AI 판정 API가 막혔을 때(크레딧 소진/장애 등) 임원이 수동으로 켜는 스위치 —
   // 켜져 있는 동안 참가자 화면 상단에 "임원 수동 평가 진행 중" 배너가 계속 표시된다.
   aiJudgingDisabled    Boolean @default(false)
+  // 임원이 전체 참가자에게 한 번에 공지할 때 쓰는 배너 문구 — null/빈 문자열이면
+  // 안 뜬다. 개별 도움 요청 답장과 달리 특정 조가 아니라 전원에게 보여야 하는
+  // 긴급 공지(예: "영상은 화질을 낮춰서 찍어주세요") 용도.
+  announcementText     String?
 }
 
 model Team {
