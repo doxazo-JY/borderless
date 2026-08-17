@@ -164,6 +164,9 @@ export function LocationPanel({
   const [submitting, setSubmitting] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploading, setVideoUploading] = useState(false);
+  // 이미 올린 영상이 있어도(현장에서 업로드 오류로 짧은 영상 등을 올린 경우)
+  // 다시 찍어서 바꿀 수 있게 — 평소엔 안 보이다가 눌렀을 때만 재업로드 UI가 뜬다.
+  const [showReupload, setShowReupload] = useState(false);
   const [pulseShown, setPulseShown] = useState(false);
   const [zoomSrc, setZoomSrc] = useState<string | null>(null);
   const router = useRouter();
@@ -225,8 +228,8 @@ export function LocationPanel({
     onResult(null);
   }
 
-  async function handleVideoUpload() {
-    if (!videoFile || !result?.submissionId) return;
+  async function handleVideoUpload(): Promise<boolean> {
+    if (!videoFile || !result?.submissionId) return false;
     setVideoUploading(true);
     try {
       const ext = videoFile.name.split(".").pop() || "mp4";
@@ -264,9 +267,12 @@ export function LocationPanel({
         // 영상 업로드가 끝나야 지역이 "완료"로 잡혀 다음 목적지로 넘어가므로,
         // 서버에서 계산되는 진행 상태를 다시 불러온다.
         router.refresh();
+        return true;
       }
+      return false;
     } catch (e) {
       console.error("영상 업로드 실패:", e);
+      return false;
     } finally {
       setVideoUploading(false);
     }
@@ -398,12 +404,20 @@ export function LocationPanel({
               <p className="label-tech text-[10px] text-muted">
                 미션 수행 영상 (30초 이상)
               </p>
-              {result.videoUrl ? (
-                <video
-                  controls
-                  src={result.videoUrl}
-                  className="w-full rounded-md border border-line"
-                />
+              {result.videoUrl && !showReupload ? (
+                <div className="space-y-1.5">
+                  <video
+                    controls
+                    src={result.videoUrl}
+                    className="w-full rounded-md border border-line"
+                  />
+                  <button
+                    onClick={() => setShowReupload(true)}
+                    className="panel-link label-tech text-[10px] text-muted"
+                  >
+                    영상 다시 올리기
+                  </button>
+                </div>
               ) : (
                 <div className="flex gap-2">
                   <label className="flex-1 cursor-pointer rounded-md border border-line px-3 py-2 text-center text-sm font-medium">
@@ -418,11 +432,18 @@ export function LocationPanel({
                     />
                   </label>
                   <button
-                    onClick={handleVideoUpload}
+                    onClick={async () => {
+                      const ok = await handleVideoUpload();
+                      if (ok) setShowReupload(false);
+                    }}
                     disabled={!videoFile || videoUploading}
                     className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-bold text-white shadow-[0_4px_12px_-4px_rgba(225,89,28,0.5)] disabled:opacity-40"
                   >
-                    {videoUploading ? "업로드 중..." : "영상 업로드"}
+                    {videoUploading
+                      ? "업로드 중..."
+                      : result.videoUrl
+                        ? "영상 교체"
+                        : "영상 업로드"}
                   </button>
                 </div>
               )}
