@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { MissionPlaylist, type PlaylistItem } from "@/components/admin/MissionPlaylist";
 import { PhotoLightbox, type PhotoItem, type PhotoGroup } from "@/components/admin/PhotoLightbox";
+import { BulkDownloadButton, type DownloadFile } from "@/components/admin/BulkDownloadButton";
 import type { MissionType } from "@/generated/prisma/enums";
 
 const MISSION_LABEL: Record<string, string> = {
@@ -110,6 +111,12 @@ export default async function GalleryPage() {
     });
   }
 
+  // "영상만 전체 zip 다운로드"용 — 위에서 이미 지역·미션·슬롯별로 다듬어둔
+  // downloadName을 그대로 재사용해서 사진과 별도로 영상만 모아 받을 수 있게 한다.
+  const videoDownloadFiles: DownloadFile[] = Array.from(groupMap.values()).flatMap(
+    (group) => group.items.map((item) => ({ url: item.videoUrl, filename: item.downloadName })),
+  );
+
   const groups = Array.from(groupMap.values()).sort((a, b) => {
     const byRegion = a.regionName.localeCompare(b.regionName, "ko", { numeric: true });
     if (byRegion !== 0) return byRegion;
@@ -171,7 +178,10 @@ export default async function GalleryPage() {
       <h1 className="text-xl font-bold">갤러리</h1>
 
       <section>
-        <h2 className="mb-1 text-lg font-bold">완성 영상</h2>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <h2 className="text-lg font-bold">완성 영상</h2>
+          <BulkDownloadButton files={videoDownloadFiles} zipNamePrefix="완성영상" />
+        </div>
         <p className="mb-3 text-xs text-zinc-400">
           지역·슬롯별로 이어 재생됩니다 — 영상이 끝나면 자동으로 다음 포인트로 넘어갑니다.
         </p>

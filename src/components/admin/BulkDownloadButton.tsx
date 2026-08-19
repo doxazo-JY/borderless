@@ -8,7 +8,13 @@ export type DownloadFile = { url: string; filename: string };
 // zip 압축을 서버(Vercel 서버리스 함수)에서 하면 영상 용량 때문에 실행시간 제한에
 // 걸릴 위험이 있어서, 사용자 브라우저에서 직접 파일들을 받아 zip으로 묶는다 —
 // 서버 부담 없이 사용자 기기 자원만 쓴다.
-export function BulkDownloadButton({ files }: { files: DownloadFile[] }) {
+export function BulkDownloadButton({
+  files,
+  zipNamePrefix = "제출물",
+}: {
+  files: DownloadFile[];
+  zipNamePrefix?: string;
+}) {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
@@ -33,7 +39,7 @@ export function BulkDownloadButton({ files }: { files: DownloadFile[] }) {
       const blobUrl = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = `borderless-제출물-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.download = `borderless-${zipNamePrefix}-${new Date().toISOString().slice(0, 10)}.zip`;
       document.body.appendChild(a);
       a.click();
       a.remove();
