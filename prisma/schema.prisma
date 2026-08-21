@@ -142,6 +142,10 @@ model Submission {
   grantStatus   GrantStatus @default(PENDING)
   confirmedAt   DateTime?
   createdAt     DateTime    @default(now())
+  // 완성 영상 몰아보기에 넣기엔 부적절한 촬영본을 삭제(=캡/진행 기록까지 날아감)
+  // 없이 갤러리에서만 빼고 싶을 때 쓴다 — 판정/진행 데이터는 그대로 둔 채
+  // 화면 노출만 끈다.
+  hiddenInGallery Boolean   @default(false)
 }
 
 model HelpRequest {

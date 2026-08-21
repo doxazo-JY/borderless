@@ -36,7 +36,12 @@ export async function GalleryContent({ readOnly = false }: { readOnly?: boolean 
     // 나중에 지역·슬롯별로 영상을 이어붙일 소재라 통과 + 영상 있는 것만 대상으로 한다
     // (판정 모니터링은 팀 탭의 역할 — 여긴 결과물 모음).
     prisma.submission.findMany({
-      where: { aiPassed: true, videoUrl: { not: null }, location: { isActive: true } },
+      where: {
+        aiPassed: true,
+        videoUrl: { not: null },
+        hiddenInGallery: false,
+        location: { isActive: true },
+      },
       include: {
         group: true,
         location: { include: { region: true, mission1: true, mission2: true } },
@@ -46,7 +51,7 @@ export async function GalleryContent({ readOnly = false }: { readOnly?: boolean 
     // 사진은 통과/실패 구분 없이 포인트별로 들어온 순서 그대로 모아 회고용으로 보여준다
     // (판정 대응용 모니터링은 팀 탭의 역할).
     prisma.submission.findMany({
-      where: { photoUrl: { not: null }, location: { isActive: true } },
+      where: { photoUrl: { not: null }, hiddenInGallery: false, location: { isActive: true } },
       include: { group: true, location: { include: { region: true } } },
       orderBy: { createdAt: "asc" },
     }),

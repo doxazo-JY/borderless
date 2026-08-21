@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DownloadLink } from "@/components/admin/DownloadLink";
-import { replaceSubmissionVideo } from "@/app/admin/[secret]/gallery/actions";
+import {
+  replaceSubmissionVideo,
+  setSubmissionGalleryHidden,
+} from "@/app/admin/[secret]/gallery/actions";
 import { supabaseBrowser } from "@/lib/supabase-client";
 
 export interface PlaylistItem {
@@ -28,6 +31,7 @@ export function MissionPlaylist({
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [replacing, setReplacing] = useState(false);
+  const [hiding, setHiding] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const first = items[0];
 
@@ -79,6 +83,22 @@ export function MissionPlaylist({
       console.error("영상 교체 실패:", e);
       alert("영상 교체에 실패했어요. 다시 시도해주세요.");
       setReplacing(false);
+    }
+  }
+
+  async function handleHideVideo() {
+    if (!current) return;
+    if (!confirm("이 영상을 갤러리에서 뺄까요? 판정/진행 기록은 그대로 남고, 화면에서만 안 보이게 됩니다.")) {
+      return;
+    }
+    setHiding(true);
+    try {
+      await setSubmissionGalleryHidden(current.id, true);
+      window.location.reload();
+    } catch (e) {
+      console.error("갤러리 생략 실패:", e);
+      alert("실패했어요. 다시 시도해주세요.");
+      setHiding(false);
     }
   }
 
@@ -172,6 +192,14 @@ export function MissionPlaylist({
                       }}
                     />
                   </label>
+                  <button
+                    type="button"
+                    onClick={handleHideVideo}
+                    disabled={hiding}
+                    className="text-xs text-red-400 underline disabled:opacity-50"
+                  >
+                    {hiding ? "빼는 중..." : "갤러리에서 생략"}
+                  </button>
                 </>
               )}
               <button type="button" onClick={() => setOpenIndex(null)} className="ml-2 underline">
