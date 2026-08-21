@@ -17,5 +17,5 @@ export default async function PublicGalleryPage({
     notFound();
   }
 
-  return <GalleryContent />;
+  return <GalleryContent readOnly />;
 }

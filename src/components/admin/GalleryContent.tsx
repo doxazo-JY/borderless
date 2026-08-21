@@ -29,7 +29,9 @@ interface PlaylistGroup {
 // 어드민의 "갤러리" 탭과, 임원 외 다른 사람에게 링크만 따로 공유하기 위한
 // /gallery/[secret] 페이지가 이 내용을 그대로 같이 쓴다 — 데이터/화면 구성은
 // 완전히 동일하고, 두 라우트는 서로 다른 비밀 경로로만 각자 접근을 막는다.
-export async function GalleryContent() {
+// readOnly는 공유 링크 쪽에서만 true로 켜서 다운로드/영상 교체 같은 편집성
+// 기능을 감춘다 — 임원이 아닌 사람에게 실수로 파일을 바꿀 여지를 안 주려는 것.
+export async function GalleryContent({ readOnly = false }: { readOnly?: boolean }) {
   const [passedSubmissions, photoSubmissions, locations] = await Promise.all([
     // 나중에 지역·슬롯별로 영상을 이어붙일 소재라 통과 + 영상 있는 것만 대상으로 한다
     // (판정 모니터링은 팀 탭의 역할 — 여긴 결과물 모음).
@@ -161,7 +163,9 @@ export async function GalleryContent() {
       <section>
         <div className="mb-1 flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold">완성 영상</h2>
-          <BulkDownloadButton files={videoDownloadFiles} zipNamePrefix="완성영상" />
+          {!readOnly && (
+            <BulkDownloadButton files={videoDownloadFiles} zipNamePrefix="완성영상" />
+          )}
         </div>
         <p className="mb-3 text-xs text-zinc-400">
           지역별로 이어 재생됩니다 — 영상이 끝나면 자동으로 다음 포인트로 넘어갑니다.
@@ -181,7 +185,9 @@ export async function GalleryContent() {
                 </div>
               );
             }
-            return <MissionPlaylist key={key} title={title} items={group.items} />;
+            return (
+              <MissionPlaylist key={key} title={title} items={group.items} readOnly={readOnly} />
+            );
           })}
         </div>
       </section>

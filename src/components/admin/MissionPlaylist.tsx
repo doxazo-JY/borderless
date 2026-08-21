@@ -17,7 +17,15 @@ export interface PlaylistItem {
 // 미션 타입별로 통과한 영상들을 이어서 재생 — 지역 내 여러 포인트 영상을 합치면
 // 성경 본문 낭독/찬양 한 곡이 완성되는 구조라, 하나씩 재생-닫기-재생을 반복하지
 // 않도록 대표 카드 하나만 눌러서 모달에서 자동으로 이어보게 한다.
-export function MissionPlaylist({ title, items }: { title: string; items: PlaylistItem[] }) {
+export function MissionPlaylist({
+  title,
+  items,
+  readOnly = false,
+}: {
+  title: string;
+  items: PlaylistItem[];
+  readOnly?: boolean;
+}) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [replacing, setReplacing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -107,6 +115,7 @@ export function MissionPlaylist({ title, items }: { title: string; items: Playli
               ref={videoRef}
               src={current.videoUrl}
               controls
+              playsInline
               onEnded={handleEnded}
               onClick={(e) => e.stopPropagation()}
               className="max-h-full max-w-full rounded bg-black object-contain"
@@ -146,21 +155,25 @@ export function MissionPlaylist({ title, items }: { title: string; items: Playli
               <span className="text-xs text-white/70">
                 {openIndex! + 1} / {items.length}
               </span>
-              <DownloadLink url={current.videoUrl} filename={current.downloadName} label="이 영상 받기" />
-              <label className="cursor-pointer text-xs text-emerald-400 underline">
-                {replacing ? "교체 중..." : "영상 교체"}
-                <input
-                  type="file"
-                  accept="video/*"
-                  disabled={replacing}
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (file) handleReplaceVideo(file);
-                  }}
-                />
-              </label>
+              {!readOnly && (
+                <>
+                  <DownloadLink url={current.videoUrl} filename={current.downloadName} label="이 영상 받기" />
+                  <label className="cursor-pointer text-xs text-emerald-400 underline">
+                    {replacing ? "교체 중..." : "영상 교체"}
+                    <input
+                      type="file"
+                      accept="video/*"
+                      disabled={replacing}
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (file) handleReplaceVideo(file);
+                      }}
+                    />
+                  </label>
+                </>
+              )}
               <button type="button" onClick={() => setOpenIndex(null)} className="ml-2 underline">
                 닫기
               </button>
