@@ -11,8 +11,6 @@ const MISSION_LABEL: Record<string, string> = {
   CONFESSION: "고백",
 };
 
-const MISSION_TYPE_ORDER: MissionType[] = ["WORD", "PRAISE", "PRAYER", "CONFESSION"];
-
 function extFromUrl(url: string, fallback: string): string {
   const match = url.split("?")[0].match(/\.([a-zA-Z0-9]+)$/);
   return match ? match[1] : fallback;
@@ -22,15 +20,9 @@ function safeFilenamePart(s: string): string {
   return s.replace(/[\\/:*?"<>|]/g, "-").trim();
 }
 
-// 말씀(WORD)은 슬롯1이 전반부·슬롯2가 후반부라 둘을 이어야 본문이 완성된다(예: 시편
-// 119편 1~96절 다음에 97~176절) — 반대로 찬양(PRAISE)은 슬롯1/2가 "찬양"/"워십"처럼
-// 서로 다른 완성본이라 슬롯별로 따로 두는 게 맞는다. 그래서 WORD만 슬롯을 합친다.
-const COMBINE_SLOTS_TYPES: MissionType[] = ["WORD"];
-
 interface PlaylistGroup {
   regionName: string;
   type: MissionType;
-  slot: 1 | 2 | null; // null이면 슬롯1+2를 이어붙인 그룹
   items: PlaylistItem[];
 }
 
@@ -61,32 +53,31 @@ export default async function GalleryPage() {
     }),
   ]);
 
-  // 같은 지역·같은 슬롯끼리 이어야 하나의 완성본이 된다 (예: C1 미션1→C2 미션1→C3
-  // 미션1→C4 미션1이 완성 영상 1개, 미션2끼리가 별도의 완성 영상 1개) — 슬롯이 섞이면
-  // 안 되므로 지역+미션타입+슬롯 3중 기준으로 플레이리스트를 나눈다.
+  // 같은 지역·같은 미션타입끼리는 슬롯1/2 구분 없이 하나로 이어붙인다 — 지역 하나당
+  // 미션 타입이 하나뿐이라(A=고백, B=기도, C=말씀, D=찬양), 결과적으로 지역당 완성
+  // 영상 하나씩, 총 4개가 된다.
   const groupMap = new Map<string, PlaylistGroup>();
 
-  function ensureGroup(regionId: string, regionName: string, type: MissionType, slot: 1 | 2) {
-    const effectiveSlot = COMBINE_SLOTS_TYPES.includes(type) ? null : slot;
-    const key = `${regionId}_${type}_${effectiveSlot ?? "all"}`;
+  function ensureGroup(regionId: string, regionName: string, type: MissionType) {
+    const key = `${regionId}_${type}`;
     let group = groupMap.get(key);
     if (!group) {
-      group = { regionName, type, slot: effectiveSlot, items: [] };
+      group = { regionName, type, items: [] };
       groupMap.set(key, group);
     }
     return group;
   }
 
   for (const loc of locations) {
-    if (loc.mission1) ensureGroup(loc.regionId, loc.region.name, loc.mission1.type, 1);
-    if (loc.mission2) ensureGroup(loc.regionId, loc.region.name, loc.mission2.type, 2);
+    if (loc.mission1) ensureGroup(loc.regionId, loc.region.name, loc.mission1.type);
+    if (loc.mission2) ensureGroup(loc.regionId, loc.region.name, loc.mission2.type);
   }
 
   for (const s of passedSubmissions) {
     const slot = s.missionSlot === 2 ? 2 : 1;
     const mission = slot === 2 ? s.location.mission2 : s.location.mission1;
     if (!mission) continue;
-    const group = ensureGroup(s.location.regionId, s.location.region.name, mission.type, slot);
+    const group = ensureGroup(s.location.regionId, s.location.region.name, mission.type);
     const locationLabel = s.location.name.replace(/\(더미\)/, "");
     const namePrefix = safeFilenamePart(
       `${MISSION_LABEL[mission.type]}_${s.location.region.name}_${s.location.name}_${s.group.displayName}`,
@@ -102,8 +93,8 @@ export default async function GalleryPage() {
   }
 
   for (const group of groupMap.values()) {
-    // 슬롯을 합친 그룹(WORD)은 슬롯1 전체(포인트 순)가 끝난 뒤 슬롯2 전체가 이어져야 하므로
-    // 슬롯을 1순위로, 포인트 이름을 2순위로 정렬한다.
+    // 슬롯1 전체(포인트 순)가 끝난 뒤 슬롯2 전체가 이어지도록, 슬롯을 1순위로,
+    // 포인트 이름을 2순위로 정렬한다.
     group.items.sort((a, b) => {
       const bySlot = (a.slot ?? 0) - (b.slot ?? 0);
       if (bySlot !== 0) return bySlot;
@@ -111,30 +102,17 @@ export default async function GalleryPage() {
     });
   }
 
-  // "영상만 전체 zip 다운로드"용 — 위에서 이미 지역·미션·슬롯별로 다듬어둔
-  // downloadName을 그대로 재사용해서 사진과 별도로 영상만 모아 받을 수 있게 한다.
+  // "영상만 전체 zip 다운로드"용 — 위에서 이미 지역·미션별로 다듬어둔 downloadName을
+  // 그대로 재사용해서 사진과 별도로 영상만 모아 받을 수 있게 한다.
   const videoDownloadFiles: DownloadFile[] = Array.from(groupMap.values()).flatMap(
     (group) => group.items.map((item) => ({ url: item.videoUrl, filename: item.downloadName })),
   );
 
-  const groups = Array.from(groupMap.values()).sort((a, b) => {
-    const byRegion = a.regionName.localeCompare(b.regionName, "ko", { numeric: true });
-    if (byRegion !== 0) return byRegion;
-    const byType = MISSION_TYPE_ORDER.indexOf(a.type) - MISSION_TYPE_ORDER.indexOf(b.type);
-    if (byType !== 0) return byType;
-    return (a.slot ?? 0) - (b.slot ?? 0);
-  });
-
-  // 지역별로 한 줄씩 — 그룹이 2개면 2열, 1개(WORD처럼 슬롯을 합친 경우)면 가운데 정렬 1열.
-  const regionRows: { regionName: string; groups: PlaylistGroup[] }[] = [];
-  for (const group of groups) {
-    const lastRow = regionRows[regionRows.length - 1];
-    if (lastRow && lastRow.regionName === group.regionName) {
-      lastRow.groups.push(group);
-    } else {
-      regionRows.push({ regionName: group.regionName, groups: [group] });
-    }
-  }
+  // 지역 하나당 미션 타입이 하나뿐이라 그룹이 정확히 4개(A~D) 나온다 — 2열 2행 그리드로
+  // 바로 깔기 좋게 지역 이름 순으로만 정렬한다.
+  const groups = Array.from(groupMap.values()).sort((a, b) =>
+    a.regionName.localeCompare(b.regionName, "ko", { numeric: true }),
+  );
 
   // 포인트(지역+장소)별로 묶고, 그 안에서는 들어온 순서(createdAt asc, 쿼리에서 이미 정렬됨)
   // 그대로 — "A지역 a 포인트 들어오는 대로 쭉 -> A지역 b 포인트 들어오는 대로 쭉" 형태.
@@ -183,39 +161,25 @@ export default async function GalleryPage() {
           <BulkDownloadButton files={videoDownloadFiles} zipNamePrefix="완성영상" />
         </div>
         <p className="mb-3 text-xs text-zinc-400">
-          지역·슬롯별로 이어 재생됩니다 — 영상이 끝나면 자동으로 다음 포인트로 넘어갑니다.
+          지역별로 이어 재생됩니다 — 영상이 끝나면 자동으로 다음 포인트로 넘어갑니다.
         </p>
-        <div className="space-y-3">
-          {regionRows.map((row) => (
-            <div
-              key={row.regionName}
-              className={row.groups.length === 1 ? "flex justify-center" : "grid grid-cols-2 gap-3"}
-            >
-              {row.groups.map((group) => {
-                const title = `${group.regionName}지역 · ${MISSION_LABEL[group.type]}${
-                  group.slot ? ` · 미션${group.slot}` : ""
-                }`;
-                const key = `${group.regionName}_${group.type}_${group.slot ?? "all"}`;
-                const wrapperClassName = row.groups.length === 1 ? "w-1/2" : "";
-                if (group.items.length === 0) {
-                  return (
-                    <div
-                      key={key}
-                      className={`${wrapperClassName} flex aspect-video w-full flex-col items-center justify-center gap-1 rounded border border-dashed border-zinc-300 bg-zinc-50 p-2 text-center`}
-                    >
-                      <p className="text-xs font-medium text-zinc-500">{title}</p>
-                      <p className="text-[10px] text-zinc-400">아직 없음</p>
-                    </div>
-                  );
-                }
-                return (
-                  <div key={key} className={wrapperClassName}>
-                    <MissionPlaylist title={title} items={group.items} />
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+        <div className="grid grid-cols-2 gap-3">
+          {groups.map((group) => {
+            const title = `${group.regionName}지역 · ${MISSION_LABEL[group.type]}`;
+            const key = `${group.regionName}_${group.type}`;
+            if (group.items.length === 0) {
+              return (
+                <div
+                  key={key}
+                  className="flex aspect-video w-full flex-col items-center justify-center gap-1 rounded border border-dashed border-zinc-300 bg-zinc-50 p-2 text-center"
+                >
+                  <p className="text-xs font-medium text-zinc-500">{title}</p>
+                  <p className="text-[10px] text-zinc-400">아직 없음</p>
+                </div>
+              );
+            }
+            return <MissionPlaylist key={key} title={title} items={group.items} />;
+          })}
         </div>
       </section>
 
