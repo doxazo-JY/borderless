@@ -109,7 +109,7 @@ export function MissionPlaylist({
 
       {current && (
         <div className="fixed inset-0 z-50 bg-black/80" onClick={() => setOpenIndex(null)}>
-          <div className="flex h-full items-center justify-center px-20 pb-28 pt-4">
+          <div className="flex h-full items-center justify-center px-2 pb-28 pt-4">
             <video
               key={current.id}
               ref={videoRef}
@@ -130,7 +130,7 @@ export function MissionPlaylist({
               setOpenIndex((i) => (i === null ? i : Math.max(i - 1, 0)));
             }}
             disabled={openIndex === 0}
-            className="fixed left-3 top-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-white/10 px-3 py-2 text-lg text-white hover:bg-white/20 disabled:opacity-20"
+            className="fixed left-3 top-1/2 -translate-y-1/2 rounded-full border border-white/40 bg-black/40 px-3 py-2 text-lg text-white shadow-[0_2px_8px_rgba(0,0,0,0.5)] hover:bg-black/60 disabled:opacity-20"
           >
             ←
           </button>
@@ -141,7 +141,7 @@ export function MissionPlaylist({
               setOpenIndex((i) => (i === null ? i : Math.min(i + 1, items.length - 1)));
             }}
             disabled={openIndex === items.length - 1}
-            className="fixed right-3 top-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-white/10 px-3 py-2 text-lg text-white hover:bg-white/20 disabled:opacity-20"
+            className="fixed right-3 top-1/2 -translate-y-1/2 rounded-full border border-white/40 bg-black/40 px-3 py-2 text-lg text-white shadow-[0_2px_8px_rgba(0,0,0,0.5)] hover:bg-black/60 disabled:opacity-20"
           >
             →
           </button>
