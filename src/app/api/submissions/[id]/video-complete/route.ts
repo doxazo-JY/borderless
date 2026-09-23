@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentGroup } from "@/lib/group";
-import { supabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase";
+import { r2PublicUrl } from "@/lib/r2";
 
 export async function POST(
   request: Request,
@@ -24,12 +24,12 @@ export async function POST(
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  const { data } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+  const videoUrl = r2PublicUrl(path);
 
   await prisma.submission.update({
     where: { id: submission.id },
-    data: { videoUrl: data.publicUrl },
+    data: { videoUrl },
   });
 
-  return NextResponse.json({ ok: true, videoUrl: data.publicUrl });
+  return NextResponse.json({ ok: true, videoUrl });
 }

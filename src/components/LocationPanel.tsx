@@ -239,16 +239,18 @@ export function LocationPanel({
     const urlRes = await fetch(`/api/submissions/${submissionId}/video`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ext }),
+      body: JSON.stringify({ ext, contentType: file.type || undefined }),
     });
     const urlData = await urlRes.json();
     if (!urlData.ok) throw new Error(urlData.message || "업로드 URL 발급 실패");
 
-    // 2. 브라우저 → Supabase Storage 직접 업로드
-    const { error: uploadError } = await supabaseBrowser.storage
-      .from(urlData.bucket)
-      .uploadToSignedUrl(urlData.path, urlData.token, file);
-    if (uploadError) throw uploadError;
+    // 2. 브라우저 → Cloudflare R2 직접 업로드
+    const uploadRes = await fetch(urlData.uploadUrl, {
+      method: "PUT",
+      headers: file.type ? { "Content-Type": file.type } : undefined,
+      body: file,
+    });
+    if (!uploadRes.ok) throw new Error("영상 업로드 실패");
 
     // 3. 업로드 완료를 서버에 알려 Submission.videoUrl 갱신
     const completeRes = await fetch(

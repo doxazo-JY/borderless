@@ -6,7 +6,6 @@ import {
   replaceSubmissionVideo,
   setSubmissionGalleryHidden,
 } from "@/app/admin/[secret]/gallery/actions";
-import { supabaseBrowser } from "@/lib/supabase-client";
 
 export interface PlaylistItem {
   id: string;
@@ -63,18 +62,20 @@ export function MissionPlaylist({
     setReplacing(true);
     try {
       const ext = file.name.split(".").pop() || "mp4";
-      const urlRes = await fetch("/api/admin/photo-upload-url", {
+      const urlRes = await fetch("/api/admin/video-upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ext, prefix: "video" }),
+        body: JSON.stringify({ ext, contentType: file.type || undefined }),
       });
       const urlData = await urlRes.json();
       if (!urlData.ok) throw new Error(urlData.message || "업로드 URL 발급 실패");
 
-      const { error: uploadError } = await supabaseBrowser.storage
-        .from(urlData.bucket)
-        .uploadToSignedUrl(urlData.path, urlData.token, file);
-      if (uploadError) throw uploadError;
+      const uploadRes = await fetch(urlData.uploadUrl, {
+        method: "PUT",
+        headers: file.type ? { "Content-Type": file.type } : undefined,
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("영상 업로드 실패");
 
       await replaceSubmissionVideo(current.id, urlData.path);
       // 최신 videoUrl은 서버에서 조합되므로, 전체 새로고침으로 받아온다.
