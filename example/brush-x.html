@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Brush X</title>
+    <style>
+      :root { --ink: #8f431e; --ink-dark: #663018; }
+      * { box-sizing: border-box; }
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+        background: #f2e3bf;
+      }
+      .brush-x {
+        position: relative;
+        width: min(48vw, 280px);
+        aspect-ratio: 1;
+      }
+      .ink-route {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .ink-route path {
+        fill: none;
+        stroke: var(--ink-dark);
+        stroke-linecap: round;
+      }
+      .ink-route .route-main {
+        stroke-width: 5;
+        stroke-dasharray: 13 15 8 17 11 14 6 18;
+        opacity: 0.82;
+      }
+      .ink-route .route-dry {
+        stroke: #b66a34;
+        stroke-width: 1.6;
+        stroke-dasharray: 8 20 4 22 11 17;
+        stroke-dashoffset: 7;
+        opacity: 0.72;
+      }
+      .stroke {
+        position: absolute;
+        top: 44%;
+        left: 3%;
+        width: 94%;
+        height: 19%;
+        background:
+          linear-gradient(90deg, transparent 0 1%, rgba(102, 48, 24, 0.68) 4%, var(--ink) 10% 84%, rgba(104, 49, 23, 0.55) 96%, transparent 100%),
+          repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 208, 147, 0.2) 3px 4px);
+        filter: contrast(1.12);
+        transform-origin: center;
+      }
+      .stroke::before,
+      .stroke::after {
+        position: absolute;
+        top: 10%;
+        width: 19%;
+        height: 83%;
+        content: "";
+        background: inherit;
+        opacity: 0.55;
+      }
+      .stroke::before { left: -10%; clip-path: polygon(100% 0, 0 42%, 74% 54%, 3% 100%, 100% 76%); }
+      .stroke::after { right: -11%; clip-path: polygon(0 0, 96% 38%, 19% 51%, 100% 100%, 0 75%); }
+      .stroke.one {
+        clip-path: polygon(0 38%, 4% 23%, 12% 29%, 20% 14%, 31% 23%, 43% 15%, 53% 25%, 67% 12%, 77% 23%, 88% 16%, 100% 41%, 95% 67%, 85% 75%, 76% 66%, 63% 79%, 50% 69%, 38% 83%, 27% 73%, 15% 84%, 5% 68%);
+        transform: rotate(45deg);
+      }
+      .stroke.two {
+        top: 43%;
+        background:
+          linear-gradient(90deg, transparent 0 1%, rgba(96, 43, 20, 0.56) 5%, var(--ink-dark) 13% 83%, rgba(102, 48, 23, 0.55) 95%, transparent 100%),
+          repeating-linear-gradient(0deg, transparent 0 4px, rgba(253, 211, 151, 0.16) 4px 5px);
+        clip-path: polygon(0 42%, 7% 23%, 16% 31%, 24% 15%, 35% 26%, 46% 12%, 58% 25%, 70% 17%, 82% 29%, 100% 39%, 94% 68%, 85% 77%, 74% 68%, 63% 83%, 51% 72%, 39% 81%, 28% 71%, 17% 84%, 5% 69%);
+        transform: rotate(-45deg);
+      }
+      .splatter {
+        position: absolute;
+        width: 5%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: var(--ink-dark);
+        opacity: 0.68;
+      }
+      .s1 { top: 19%; left: 20%; transform: scale(0.62); }
+      .s2 { top: 75%; right: 16%; transform: scale(0.48); }
+      .s3 { top: 23%; right: 13%; transform: scale(0.28); }
+      .s4 { bottom: 14%; left: 15%; transform: scale(0.3); }
+    </style>
+  </head>
+  <body>
+    <div class="brush-x" role="img" aria-label="갈색 붓터치 X 표식">
+      <svg class="ink-route" viewBox="0 0 280 280" aria-hidden="true">
+        <path class="route-main" d="M 22 245 C 3 202, 47 174, 85 185 C 123 196, 112 227, 143 221 C 181 214, 175 165, 153 139" />
+        <path class="route-dry" d="M 22 245 C 3 202, 47 174, 85 185 C 123 196, 112 227, 143 221 C 181 214, 175 165, 153 139" />
+      </svg>
+      <span class="stroke one"></span>
+      <span class="stroke two"></span>
+      <span class="splatter s1"></span>
+      <span class="splatter s2"></span>
+      <span class="splatter s3"></span>
+      <span class="splatter s4"></span>
+    </div>
+  </body>
+</html>

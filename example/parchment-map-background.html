@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Borderless — Parchment Map Background</title>
+    <style>
+      :root {
+        --paper: #ead9a9;
+        --ink: #513b1f;
+        --ink-soft: rgba(81, 59, 31, 0.38);
+        --red: #a9452d;
+        --green: #586f40;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        overflow: hidden;
+        color: var(--ink);
+        font-family: Georgia, "Times New Roman", "Noto Serif KR", serif;
+        background:
+          radial-gradient(ellipse at 17% 25%, rgba(110, 68, 17, 0.13) 0 2%, transparent 10%),
+          radial-gradient(ellipse at 72% 19%, rgba(131, 79, 24, 0.09) 0 2%, transparent 11%),
+          radial-gradient(ellipse at 36% 72%, rgba(112, 64, 17, 0.11) 0 1.5%, transparent 12%),
+          radial-gradient(ellipse at 81% 68%, rgba(121, 74, 19, 0.12) 0 2%, transparent 13%),
+          radial-gradient(ellipse at 49% 43%, rgba(255, 244, 202, 0.55), transparent 42%),
+          repeating-linear-gradient(0deg, rgba(105, 75, 28, 0.04) 0 1px, transparent 1px 7px),
+          repeating-linear-gradient(90deg, rgba(105, 75, 28, 0.025) 0 1px, transparent 1px 11px),
+          var(--paper);
+      }
+
+      .map-frame {
+        position: relative;
+        min-height: 100vh;
+        margin: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(106, 70, 30, 0.52);
+        border-radius: 1.2% 1.8% 1.1% 1.6% / 1.2% 1.4% 1.7% 1.1%;
+        box-shadow:
+          inset 0 0 22px rgba(107, 68, 20, 0.24),
+          inset 0 0 70px rgba(125, 82, 25, 0.14),
+          0 0 0 6px rgba(255, 250, 226, 0.18);
+      }
+
+      .map-frame::before {
+        position: absolute;
+        inset: 0;
+        content: "";
+        pointer-events: none;
+        opacity: 0.48;
+        background:
+          radial-gradient(circle at 4% 4%, rgba(115, 73, 20, 0.42), transparent 13%),
+          radial-gradient(circle at 96% 5%, rgba(115, 73, 20, 0.38), transparent 14%),
+          radial-gradient(circle at 4% 95%, rgba(115, 73, 20, 0.38), transparent 14%),
+          radial-gradient(circle at 96% 95%, rgba(115, 73, 20, 0.42), transparent 14%),
+          radial-gradient(ellipse at 50% 0%, rgba(123, 79, 22, 0.31), transparent 12%),
+          radial-gradient(ellipse at 50% 100%, rgba(123, 79, 22, 0.28), transparent 12%),
+          radial-gradient(ellipse at 0% 50%, rgba(123, 79, 22, 0.25), transparent 11%),
+          radial-gradient(ellipse at 100% 50%, rgba(123, 79, 22, 0.25), transparent 11%);
+      }
+
+      .map-frame::after {
+        position: absolute;
+        inset: 9%;
+        content: "";
+        pointer-events: none;
+        opacity: 0.28;
+        background:
+          radial-gradient(circle at 18% 16%, rgba(97, 59, 17, 0.15) 0 1px, transparent 2px),
+          radial-gradient(circle at 72% 28%, rgba(97, 59, 17, 0.18) 0 1px, transparent 2px),
+          radial-gradient(circle at 43% 74%, rgba(97, 59, 17, 0.13) 0 1px, transparent 2px),
+          radial-gradient(circle at 82% 83%, rgba(97, 59, 17, 0.15) 0 1px, transparent 2px);
+        background-size: 37px 43px, 61px 47px, 71px 59px, 53px 67px;
+      }
+
+      .route {
+        position: absolute;
+        height: 2px;
+        border-top: 2px dashed rgba(81, 59, 31, 0.57);
+        transform-origin: left center;
+      }
+      .route.one { top: 30%; left: 7%; width: 22%; transform: rotate(20deg); }
+      .route.two { top: 43%; left: 27%; width: 18%; transform: rotate(-37deg); }
+      .route.three { top: 31%; left: 43%; width: 16%; transform: rotate(24deg); }
+
+      .coast {
+        position: absolute;
+        width: min(37vw, 530px);
+        height: min(30vw, 390px);
+        border: 2px solid rgba(81, 59, 31, 0.23);
+        border-radius: 46% 54% 37% 63% / 58% 39% 61% 42%;
+        box-shadow: 0 0 0 7px rgba(81, 59, 31, 0.035), inset 0 0 0 10px rgba(81, 59, 31, 0.035);
+      }
+      .coast.one { top: -12%; left: -8%; transform: rotate(-24deg); }
+      .coast.two { right: -11%; bottom: -14%; transform: rotate(23deg) scale(0.85); }
+
+      .compass {
+        position: absolute;
+        top: 9%;
+        right: 8%;
+        display: grid;
+        width: 82px;
+        height: 82px;
+        place-items: center;
+        border: 1px solid rgba(81, 59, 31, 0.65);
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: bold;
+        letter-spacing: 0.12em;
+      }
+      .compass::before, .compass::after, .compass i {
+        position: absolute;
+        width: 1px;
+        height: 66px;
+        content: "";
+        background: rgba(81, 59, 31, 0.68);
+      }
+      .compass::before { transform: rotate(45deg); }
+      .compass::after { transform: rotate(-45deg); }
+      .compass i { height: 73px; transform: rotate(90deg); }
+
+      .treasure {
+        position: absolute;
+        top: 30%;
+        left: 56%;
+        color: var(--red);
+        font-size: clamp(48px, 7vw, 88px);
+        font-weight: bold;
+        line-height: 1;
+        transform: rotate(-10deg);
+      }
+
+      .island {
+        position: absolute;
+        width: 78px;
+        height: 30px;
+        border-bottom: 2px solid rgba(62, 95, 55, 0.72);
+        border-radius: 50%;
+      }
+      .island::before, .island::after {
+        position: absolute;
+        bottom: 2px;
+        content: "";
+        border-style: solid;
+      }
+      .island::before { left: 18px; border-width: 0 15px 22px; border-color: transparent transparent rgba(62, 95, 55, 0.61); }
+      .island::after { right: 12px; border-width: 0 11px 17px; border-color: transparent transparent rgba(62, 95, 55, 0.48); }
+      .island.one { bottom: 12%; left: 9%; transform: rotate(-7deg); }
+      .island.two { top: 47%; right: 11%; transform: rotate(9deg) scale(0.72); }
+
+      .coordinates {
+        position: absolute;
+        right: 10%;
+        bottom: 10%;
+        color: var(--ink-soft);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        line-height: 1.7;
+        transform: rotate(-5deg);
+      }
+
+      @media (max-width: 640px) {
+        .map-frame { margin: 7px; }
+        .coast { width: 58vw; height: 49vw; }
+        .coast.one { top: -5%; left: -27%; }
+        .coast.two { right: -24%; bottom: -5%; }
+        .compass { top: 4%; right: 5%; transform: scale(0.68); }
+        .treasure { top: 24%; left: 73%; }
+        .island.one { bottom: 8%; left: 5%; transform: rotate(-7deg) scale(0.72); }
+        .island.two { top: 56%; right: 3%; transform: rotate(9deg) scale(0.55); }
+        .coordinates { right: 6%; bottom: 6%; transform: scale(0.8); }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="map-frame" aria-label="양피지 보물 지도 배경 시안">
+      <div class="coast one"></div>
+      <div class="coast two"></div>
+      <div class="route one"></div>
+      <div class="route two"></div>
+      <div class="route three"></div>
+      <div class="compass"><i></i>N</div>
+      <div class="treasure">×</div>
+      <div class="island one"></div>
+      <div class="island two"></div>
+      <div class="coordinates">B-04<br />E-12</div>
+    </main>
+  </body>
+</html>
