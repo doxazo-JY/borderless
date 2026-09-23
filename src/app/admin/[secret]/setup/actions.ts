@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { publicPhotoUrl } from "@/lib/storage";
+import { r2PublicUrl } from "@/lib/r2";
 
 const SETUP_PATH = `/admin/${process.env.ADMIN_SECRET_PATH}/setup`;
 
@@ -28,7 +28,7 @@ export async function createLocation(formData: FormData) {
   }
 
   const referencePhotoUrl = referencePhotoPath
-    ? publicPhotoUrl(referencePhotoPath)
+    ? r2PublicUrl(referencePhotoPath)
     : undefined;
 
   await prisma.location.create({
@@ -52,7 +52,7 @@ export async function createLocation(formData: FormData) {
 export async function updateLocationPhoto(id: string, photoPath: string) {
   if (!id || !photoPath) return;
 
-  const referencePhotoUrl = publicPhotoUrl(photoPath);
+  const referencePhotoUrl = r2PublicUrl(photoPath);
   await prisma.location.update({ where: { id }, data: { referencePhotoUrl } });
 
   refresh();
@@ -117,7 +117,7 @@ export async function createMission(formData: FormData) {
   }
 
   const photoPath = String(formData.get("photoPath") ?? "").trim();
-  const imageUrl = photoPath ? publicPhotoUrl(photoPath) : null;
+  const imageUrl = photoPath ? r2PublicUrl(photoPath) : null;
 
   await prisma.mission.create({
     data: {
@@ -132,7 +132,7 @@ export async function createMission(formData: FormData) {
 export async function updateMissionPhoto(id: string, photoPath: string) {
   if (!id || !photoPath) return;
 
-  const imageUrl = publicPhotoUrl(photoPath);
+  const imageUrl = r2PublicUrl(photoPath);
   await prisma.mission.update({ where: { id }, data: { imageUrl } });
 
   refresh();

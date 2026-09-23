@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { createMission } from "@/app/admin/[secret]/setup/actions";
-import { supabaseBrowser } from "@/lib/supabase-client";
 
 export function MissionCreateForm() {
   const formRef = useRef<HTMLFormElement>(null);
@@ -10,7 +9,7 @@ export function MissionCreateForm() {
   const [uploading, setUploading] = useState(false);
 
   // 사진 바이트는 Server Action(요청 본문 4.5MB 제한이 있는 Vercel 서버리스
-  // 함수를 거침)이 아니라 브라우저 → Supabase Storage로 직접 올리고, 폼에는
+  // 함수를 거침)이 아니라 브라우저 → R2로 직접 올리고, 폼에는
   // 그 결과 경로만 hidden input으로 실어 보낸다.
   async function handlePhotoChange(file: File) {
     setPhotoPath(null);
@@ -20,15 +19,17 @@ export function MissionCreateForm() {
       const urlRes = await fetch("/api/admin/photo-upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ext, prefix: "mission" }),
+        body: JSON.stringify({ ext, prefix: "mission", contentType: file.type || undefined }),
       });
       const urlData = await urlRes.json();
       if (!urlData.ok) throw new Error(urlData.message || "업로드 URL 발급 실패");
 
-      const { error: uploadError } = await supabaseBrowser.storage
-        .from(urlData.bucket)
-        .uploadToSignedUrl(urlData.path, urlData.token, file);
-      if (uploadError) throw uploadError;
+      const uploadRes = await fetch(urlData.uploadUrl, {
+        method: "PUT",
+        headers: file.type ? { "Content-Type": file.type } : undefined,
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("사진 업로드 실패");
 
       setPhotoPath(urlData.path);
     } catch {

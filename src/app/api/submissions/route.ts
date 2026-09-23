@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentGroup } from "@/lib/group";
 import { getCurrentTargetRegionId } from "@/lib/region-progress";
 import { getAppSettings } from "@/lib/settings";
-import { supabaseAdmin, STORAGE_BUCKET } from "@/lib/supabase";
+import { r2PublicUrl } from "@/lib/r2";
 import { judgePhotoMatch } from "@/lib/judge";
 
 export async function POST(request: Request) {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ result: "no_group" }, { status: 401 });
   }
 
-  // 사진 바이트는 이미 브라우저가 Supabase Storage로 직접 업로드해뒀고(photo-upload-url
+  // 사진 바이트는 이미 브라우저가 R2로 직접 업로드해뒀고(photo-upload-url
   // 라우트 참고), 여기서는 그 경로만 전달받는다.
   const body = await request.json().catch(() => ({}));
   const locationId = body?.locationId;
@@ -81,10 +81,7 @@ export async function POST(request: Request) {
   }
 
   // 4. AI 판정
-  const { data: photoUrlData } = supabaseAdmin.storage
-    .from(STORAGE_BUCKET)
-    .getPublicUrl(photoPath);
-  const photoUrl = photoUrlData.publicUrl;
+  const photoUrl = r2PublicUrl(photoPath);
 
   // 임원이 "AI 판정 중단"으로 표시해뒀으면(크레딧 소진 등을 미리 알고 있는 경우),
   // 어차피 실패할 API를 호출하지 않고 바로 수동 검토 대기 상태로 넘어간다 —

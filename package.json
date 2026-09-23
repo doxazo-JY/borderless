@@ -8,14 +8,14 @@
     "start": "next start -p 4000",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "migrate:videos-to-r2": "tsx scripts/migrate-videos-to-r2.ts"
+    "migrate:videos-to-r2": "tsx scripts/migrate-videos-to-r2.ts",
+    "migrate:photos-to-r2": "tsx scripts/migrate-photos-to-r2.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1138.0",
     "@aws-sdk/s3-request-presigner": "^3.1138.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
-    "@supabase/supabase-js": "^2.110.4",
     "jszip": "^3.10.1",
     "next": "16.2.10",
     "openai": "^6.46.0",

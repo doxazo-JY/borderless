@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-// 사진/영상이 Supabase Storage(다른 origin)에 있어서, 그냥 <a download href={url}>만
+// 사진/영상이 R2(다른 origin)에 있어서, 그냥 <a download href={url}>만
 // 걸어두면 브라우저가 강제 다운로드 대신 그냥 새 탭으로 열어버리는 경우가 있다 —
 // blob으로 받아와서 같은 origin의 blob: URL을 통해 다운로드를 강제한다.
 export function DownloadLink({
