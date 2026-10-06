@@ -26,8 +26,8 @@ export async function GET(request: Request) {
     cache: "no-store",
   });
 
-  return NextResponse.json(
-    { ok: res.ok, prisma: team !== null, rest: res.status, at: new Date().toISOString() },
-    { status: res.ok ? 200 : 502 },
-  );
+  const result = { ok: res.ok, prisma: team !== null, rest: res.status, at: new Date().toISOString() };
+  console.log("[ping-supabase]", JSON.stringify(result));
+
+  return NextResponse.json(result, { status: res.ok ? 200 : 502 });
 }
